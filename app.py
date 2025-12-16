@@ -282,79 +282,6 @@ if st.button("Ejecutar optimización"):
             )
 
             # =====================================================================
-            # 8.5) RANKING MULTICRITERIO
-            # =====================================================================
-            st.subheader("Ranking multicriterio de estrategias")
-
-            
-            ranking = df_compare.copy()
-            ranking["Score"] = (
-                    ranking["Sharpe"].rank(ascending=False, method="average") +
-                    ranking["Retorno Acumulado"].rank(ascending=False, method="average") +
-                    ranking["Máx Drawdown"].rank(ascending=True, method="average")
-            )
-
-            st.dataframe(ranking[["Estrategia", "Score"]])
-
-            st.markdown(
-            """
-                ### ¿Qué significa el **Score** del ranking multicriterio?
-
-                El **Score** es un indicador **comparativo**, no un valor financiero directo.
-
-                - A cada estrategia se le asigna una **posición relativa (ranking)** en:
-                  - Retorno ajustado por riesgo (Sharpe)
-                  - Retorno acumulado
-                  - Máxima caída histórica (drawdown)
-                - Luego, estas posiciones se **suman** para obtener el Score final.
-
-                **Un Score más bajo indica mejor desempeño global**, porque la estrategia:
-                - Rinde bien,
-                - Asume un riesgo razonable,
-                - Y controla mejor las caídas.
-
-                Este ranking sirve para:
-                - Validar la decisión,
-                - Comparar perfiles conservadores vs agresivos,
-                - Y justificar la elección desde múltiples criterios.
-                """
-            )
-
-            # =====================================================================
-            # 9) PESOS ÓPTIMOS
-            # =====================================================================
-            st.subheader("Pesos óptimos (Sharpe Máximo)")
-
-            df_weights = pd.DataFrame({
-                "Ticker": tickers,
-                "Peso": weights_sharpe,
-                "Peso (%)": weights_sharpe * 100
-            })
-            st.dataframe(df_weights)
-
-            fig1, ax1 = plt.subplots()
-            ax1.barh(df_weights["Ticker"], df_weights["Peso"])
-            ax1.set_title("Composición del portafolio óptimo")
-            st.pyplot(fig1)
-            st.markdown(
-                """
-                ### Explicación extendida de los pesos óptimos
-
-                Los **pesos óptimos** indican cómo distribuir el capital para obtener
-                el mejor balance entre **riesgo y retorno**, según el modelo de Markowitz.
-
-                - Un **peso del 40%** significa que **40 de cada 100 unidades monetarias**
-                  se asignan a ese activo.
-                - **Pesos altos** reflejan activos que aportan mayor eficiencia al portafolio.
-                - **Pesos bajos** indican activos que añaden más riesgo que beneficio relativo.
-
-                Para personas sin experiencia previa,
-                esta tabla funciona como una **guía práctica de asignación de capital**,
-                evitando decisiones intuitivas o emocionales.
-                """
-            )
-
-            # =====================================================================
             # 10) RENDIMIENTOS ACUMULADOS
             # =====================================================================
             st.subheader("Rendimiento acumulado por acción")
@@ -368,6 +295,29 @@ if st.button("Ejecutar optimización"):
                     "Pesos Iguales": cum_equal
                 })
             )
+
+            # =====================================================================
+            # GRÁFICO DE RETORNOS DIARIOS ACUMULADOS
+            # =====================================================================
+            st.subheader("Retornos diarios de los activos")
+            st.line_chart(returns)
+
+            st.markdown(
+                """
+                **Interpretación:**
+                - Cada línea representa el retorno porcentual diario de una acción.
+                - Picos indican periodos de alta volatilidad.
+                """
+            )
+            # =====================================================================
+            # GRÁFICO DE RETORNOS DIARIOS POR ACTIVO
+            # =====================================================================
+
+            st.subheader("Retornos diarios por activo")
+
+            for ticker in returns.columns:
+                  st.markdown(f"### {ticker}")
+                  st.line_chart(returns[[ticker]])
             # =====================================================================
             # 11) FRONTERA EFICIENTE (MEJORADA CON ETIQUETAS)
             # =====================================================================
@@ -375,9 +325,9 @@ if st.button("Ejecutar optimización"):
 
             fig2, ax2 = plt.subplots(figsize=(8, 6))
 
-            # Frontera eficiente 
-            ax2.plot( 
-                    efficient_vols, 
+            # Frontera eficiente
+            ax2.plot(
+                    efficient_vols,
                     efficient_rets,
                     linestyle="-",
                     linewidth=2,
@@ -390,7 +340,7 @@ if st.button("Ejecutar optimización"):
                     s=90,
                     marker="o",
                     label="Sharpe Máximo"
-            ) 
+            )
 
             ax2.scatter(
                     vol_minvol,
@@ -398,8 +348,8 @@ if st.button("Ejecutar optimización"):
                     s=90,
                     marker="^",
                     label="Mínima Volatilidad"
-           )
-            ax2.scatter( 
+            )
+            ax2.scatter(
                     vol_equal,
                     ret_equal,
                     s=90,
@@ -432,65 +382,160 @@ if st.button("Ejecutar optimización"):
             ax2.set_xlabel("Volatilidad anual (riesgo)")
             ax2.set_ylabel("Retorno anual esperado")
             ax2.set_title("Frontera eficiente y estrategias comparadas")
-            ax2.legend()        
+            ax2.legend()
             ax2.grid(True, alpha=0.3)
             st.pyplot(fig2)
-
             # =====================================================================
-            # 12) INTERPRETACIÓN FINAL (AJUSTADA POR ESTRATEGIA)
+            # INTERPRETACIÓN FINAL – COMPORTAMIENTO REAL PONDERADO EN EL TIEMPO
             # =====================================================================
             st.subheader("Interpretación automática del mejor portafolio")
 
-            best = df_compare.sort_values("Sharpe", ascending=False).iloc[0]["Estrategia"]
+            df_strategies = pd.DataFrame({
+                "Sharpe Máximo": daily_sharpe,
+                "Mínima Volatilidad": daily_minvol,
+                "Pesos Iguales": daily_equal
+            })
 
-            if best == "Sharpe Máximo":
-                st.markdown(
-                    "### Mejor portafolio: Sharpe Máximo\n\n"
-                    "Este portafolio ofrece el **mejor equilibrio entre riesgo y retorno**.\n\n"
-                    "- Maximiza el retorno por cada unidad de riesgo asumido.\n"
-                    "- Presenta el mejor desempeño ajustado por riesgo.\n"
-                    "- Adecuado para horizontes de inversión largos."
-                )
-            elif best == "Mínima Volatilidad":
-                st.markdown(
-                    "### Mejor portafolio: Mínima Volatilidad\n\n"
-                    "Prioriza estabilidad y preservación del capital.\n\n"
-                    "- Reduce la exposición a grandes caídas."
-                )
-            else:
+            # Ponderación temporal (años recientes pesan más)
+            years_index = df_strategies.index.year
+            unique_years = np.sort(years_index.unique())
+
+            year_weights = {
+                year: (i + 1) / len(unique_years)
+                for i, year in enumerate(unique_years)
+            }
+
+            weights_series = years_index.map(year_weights)
+
+            # Retorno real ponderado
+            weighted_performance = (
+                (1 + df_strategies).cumprod()
+                .mul(weights_series, axis=0)
+                .iloc[-1]
+            )
+
+            best = weighted_performance.idxmax()
+
+            st.dataframe(weighted_performance.rename("Desempeño_Ponderado"))
+
+            # Interpretación
+            if best == "Pesos Iguales":
                 st.markdown(
                     "### Mejor portafolio: Pesos Iguales\n\n"
-                    "Estrategia simple y robusta."
+                    "El análisis del **comportamiento real del portafolio en el tiempo**, "
+                    "ponderando más los años recientes, muestra que esta estrategia ha sido "
+                    "la **más robusta y consistente**.\n\n"
+                    "- Menor dependencia de supuestos estadísticos.\n"
+                    "- Mejor desempeño agregado a lo largo del tiempo.\n"
+                    "- Alta estabilidad frente a cambios de mercado."
                 )
 
-            st.success(f"Portafolio recomendado según el modelo: {best}")
+            elif best == "Sharpe Máximo":
+                st.markdown(
+                    "### Mejor portafolio: Sharpe Máximo\n\n"
+                    "La evaluación temporal indica que esta estrategia ofrece el mejor "
+                    "equilibrio riesgo–retorno en el comportamiento histórico reciente."
+                )
+
+            else:
+                st.markdown(
+                    "### Mejor portafolio: Mínima Volatilidad\n\n"
+                    "Esta estrategia destaca por su estabilidad, aunque sacrifica retorno "
+                    "frente a las demás."
+                )
+
+            st.success(f"Portafolio recomendado según comportamiento real ponderado: {best}")
 
             # =====================================================================
-            # 13) EXPORTACIÓN A EXCEL
+            # 9) PESOS ÓPTIMOS SEGÚN PORTAFOLIO RECOMENDADO
             # =====================================================================
-            export_df = pd.DataFrame({"Fecha": data.index})
+            st.subheader("Pesos óptimos del portafolio recomendado")
 
-            for t in tickers:
-                export_df[f"Precio_{t}"] = data[t].values
-                export_df[f"Retorno_{t}"] = returns[t].reindex(export_df["Fecha"]).values
-                export_df[f"Acumulado_{t}"] = cumulative_assets[t].reindex(
-                    export_df["Fecha"]
-                ).values
+            n_assets = len(tickers)
 
-            export_df["Sharpe"] = cum_sharpe.reindex(export_df["Fecha"]).values
-            export_df["MinVol"] = cum_minvol.reindex(export_df["Fecha"]).values
-            export_df["Equal"] = cum_equal.reindex(export_df["Fecha"]).values
+            if best == "Sharpe Máximo":
+                final_weights = weights_sharpe
+                metodo = "Optimización por Ratio de Sharpe"
 
+            elif best == "Mínima Volatilidad":
+                final_weights = weights_minvol
+                metodo = "Optimización por Mínima Volatilidad"
+
+            else:  # Pesos Iguales
+                final_weights = np.array([1 / n_assets] * n_assets)
+                metodo = "Asignación Equitativa (Pesos Iguales)"
+
+            df_weights = pd.DataFrame({
+                "Ticker": tickers,
+                "Peso": final_weights,
+                "Peso (%)": final_weights * 100
+            })
+
+            st.dataframe(df_weights)
+
+            # --- Gráfico ---
+            fig, ax = plt.subplots()
+            ax.barh(df_weights["Ticker"], df_weights["Peso"])
+            ax.set_title(f"Composición del portafolio recomendado\n({metodo})")
+            st.pyplot(fig)
+
+            st.markdown(
+                f"""
+                ### Interpretación de los pesos
+
+                Los pesos mostrados corresponden **exclusivamente** al portafolio
+                recomendado por el modelo (**{best}**).
+
+                - Cada peso indica qué proporción del capital debe asignarse a cada activo.
+                - La suma total de los pesos es del **100%**.
+                - Esta asignación refleja el comportamiento histórico del portafolio
+                  bajo el criterio seleccionado.
+
+                ### Explicación extendida de los pesos óptimos
+
+                Los **pesos óptimos** indican cómo distribuir el capital para obtener
+                el mejor balance entre **riesgo y retorno**, según el modelo de Markowitz.
+
+                - Un **peso del 40%** significa que **40 de cada 100 unidades monetarias**
+                  se asignan a ese activo.
+                - **Pesos altos** reflejan activos que aportan mayor eficiencia al portafolio.
+                - **Pesos bajos** indican activos que añaden más riesgo que beneficio relativo.
+
+                Para personas sin experiencia previa,
+                esta tabla funciona como una **guía práctica de asignación de capital**,
+                evitando decisiones intuitivas o emocionales.
+                """
+            )
+            # =====================================================================
+            # 9) EXPORTACIÓN A EXCEL
+            # =====================================================================
             with pd.ExcelWriter("resultados_portafolio.xlsx", engine="openpyxl") as writer:
-                export_df.to_excel(writer, sheet_name="Datos_Completos", index=False)
-                df_weights.to_excel(writer, sheet_name="Pesos", index=False)
-                df_compare.to_excel(writer, sheet_name="Comparación", index=False)
-                pd.DataFrame({
-                    "Retorno": efficient_rets,
-                    "Volatilidad": efficient_vols
-                }).to_excel(writer, sheet_name="Frontera", index=False)
+                data.reset_index().to_excel(writer, sheet_name="Precios", index=False)
+                returns.reset_index().to_excel(writer, sheet_name="Retornos_Diarios", index=False)
+                cumulative_assets.reset_index().to_excel(writer, sheet_name="Acumulados_Acciones", index=False)
 
-            st.success("Archivo Excel generado correctamente")
+                pd.DataFrame({
+                    "Fecha": returns.index,
+                    "Sharpe_Maximo": daily_sharpe.values,
+                    "Minima_Volatilidad": daily_minvol.values,
+                    "Pesos_Iguales": daily_equal.values
+                }).to_excel(writer, sheet_name="Estrategias_Diarias", index=False)
+
+                pd.DataFrame({
+                    "Fecha": cum_sharpe.index,
+                    "Sharpe_Maximo": cum_sharpe.values,
+                    "Minima_Volatilidad": cum_minvol.values,
+                    "Pesos_Iguales": cum_equal.values
+                }).to_excel(writer, sheet_name="Estrategias_Acumuladas", index=False)
+
+                df_weights.to_excel(writer, sheet_name="Pesos_Optimos", index=False)
+
+                pd.DataFrame({
+                    "Retorno_Esperado": efficient_rets,
+                    "Volatilidad": efficient_vols
+                }).to_excel(writer, sheet_name="Frontera_Eficiente", index=False)
+
+            st.success("Archivo Excel generado correctamente con todas las hojas")
 
         except Exception as e:
             st.error(f"Error: {e}")
