@@ -1,7 +1,9 @@
 streamlit
+yfinance
 pandas
 numpy
-yfinance
 scipy
 matplotlib
-openpyxl
+openai
+
+
