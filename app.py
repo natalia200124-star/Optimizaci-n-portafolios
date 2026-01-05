@@ -243,7 +243,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             # =====================================================================
             # 8.1) VOLATILIDAD HISTÓRICA ROLLING (RIESGO DINÁMICO)
             # =====================================================================
-            st.subheader("Volatilidad histórica móvil (12 meses)")
+            st.subheader("Volatilidad histórica móvil")
 
             rolling_vol = pd.DataFrame({
                 "Sharpe Máximo": daily_sharpe.rolling(252).std() * np.sqrt(252),
@@ -710,6 +710,7 @@ else:
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+
 
 
 
