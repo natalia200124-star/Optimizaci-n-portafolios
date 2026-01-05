@@ -6,6 +6,21 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+# =========================
+# SESSION STATE - INICIALIZACIÓN
+# =========================
+if "analysis_done" not in st.session_state:
+    st.session_state.analysis_done = False
+
+if "analysis_results" not in st.session_state:
+    st.session_state.analysis_results = None
+
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
+
+if "run_analysis" not in st.session_state:
+    st.session_state.run_analysis = False
+
 st.title("Optimización de Portafolios – Modelo de Markowitz")
 
 # =========================
@@ -23,11 +38,17 @@ years = st.slider(
 )
 
 if st.button("Ejecutar optimización"):
+    st.session_state.run_analysis = True
+    st.session_state.analysis_done = False
 
-    tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-    if len(tickers) < 2:
-        st.error("Ingrese al menos 2 tickers.")
-    else:
+if st.session_state.run_analysis and not st.session_state.analysis_done:
+
+        tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
+
+        if len(tickers) < 2:
+            st.error("Ingrese al menos 2 tickers.")
+            st.stop()
+
         try:
             # =====================================================================
             # 1) DESCARGA DE DATOS – HORIZONTE SELECCIONADO
@@ -35,14 +56,48 @@ if st.button("Ejecutar optimización"):
             end_date = datetime.today()
             start_date = end_date.replace(year=end_date.year - years)
 
-            data = yf.download(tickers, start=start_date, end=end_date)["Close"]
+            data = yf.download(
+                tickers,
+                start=start_date,
+                end=end_date,
+                auto_adjust=True
+            )["Close"]
 
+            if isinstance(data.columns, pd.MultiIndex):
+                data = data.droplevel(0, axis=1)
+
+            data = data.ffill()
+
+            # =====================================================================
+            # 1.5) DESCARGA Y DEPURACIÓN DE DATOS (SIN LOOK-AHEAD BIAS)
+            # =====================================================================
+            raw_data = yf.download(
+                tickers,
+                start=start_date,
+                end=end_date,
+                auto_adjust=False,
+                progress=False
+            )
+
+            # Usar precios ajustados (corrige splits y dividendos)
+            data = raw_data["Adj Close"]
+
+            # En caso de MultiIndex
             if isinstance(data.columns, pd.MultiIndex):
                 data = data.droplevel(0, axis=1)
 
             data = data[tickers]
 
-            st.subheader("Precios de cierre (primeras filas)")
+            # Ordenar por fecha (seguridad)
+            data = data.sort_index()
+
+            # Rellenar valores faltantes SOLO hacia adelante
+            data = data.ffill()
+
+            # Eliminar filas que sigan incompletas (inicio de la serie)
+            data = data.dropna()
+
+            st.subheader("Precios ajustados depurados (primeras filas)")
             st.dataframe(data.head())
 
             # =====================================================================
@@ -506,39 +561,155 @@ if st.button("Ejecutar optimización"):
                 evitando decisiones intuitivas o emocionales.
                 """
             )
-            # =====================================================================
-            # 9) EXPORTACIÓN A EXCEL
-            # =====================================================================
-            with pd.ExcelWriter("resultados_portafolio.xlsx", engine="openpyxl") as writer:
-                data.reset_index().to_excel(writer, sheet_name="Precios", index=False)
-                returns.reset_index().to_excel(writer, sheet_name="Retornos_Diarios", index=False)
-                cumulative_assets.reset_index().to_excel(writer, sheet_name="Acumulados_Acciones", index=False)
 
-                pd.DataFrame({
-                    "Fecha": returns.index,
-                    "Sharpe_Maximo": daily_sharpe.values,
-                    "Minima_Volatilidad": daily_minvol.values,
-                    "Pesos_Iguales": daily_equal.values
-                }).to_excel(writer, sheet_name="Estrategias_Diarias", index=False)
+            st.session_state.analysis_done = True
 
-                pd.DataFrame({
-                    "Fecha": cum_sharpe.index,
-                    "Sharpe_Maximo": cum_sharpe.values,
-                    "Minima_Volatilidad": cum_minvol.values,
-                    "Pesos_Iguales": cum_equal.values
-                }).to_excel(writer, sheet_name="Estrategias_Acumuladas", index=False)
+            st.success("Análisis del portafolio ejecutado correctamente")
 
-                df_weights.to_excel(writer, sheet_name="Pesos_Optimos", index=False)
+            # ======================================================
+            # GUARDAR RESULTADOS PARA EL CHAT
+            # ======================================================
+            st.session_state["analysis_results"] = {
+                "tickers": tickers,
+                "best": best,
 
-                pd.DataFrame({
-                    "Retorno_Esperado": efficient_rets,
-                    "Volatilidad": efficient_vols
-                }).to_excel(writer, sheet_name="Frontera_Eficiente", index=False)
+                # Comparación general
+                "comparison": df_compare,
 
-            st.success("Archivo Excel generado correctamente con todas las hojas")
+                # Pesos del portafolio recomendado (tabla)
+                "weights_recommended": df_weights,
+
+                # Pesos óptimos por estrategia (clave para el chat)
+                "weights": {
+                    "Sharpe Máximo": dict(zip(tickers, weights_sharpe)),
+                    "Mínima Volatilidad": dict(zip(tickers, weights_minvol)),
+                    "Pesos Iguales": dict(zip(tickers, [1 / len(tickers)] * len(tickers)))
+                },
+
+                # Retornos esperados
+                "retornos": {
+                    "Sharpe Máximo": ret_sharpe,
+                    "Mínima Volatilidad": ret_minvol,
+                    "Pesos Iguales": ret_equal
+                },
+
+                # Volatilidades
+                "volatilidades": {
+                    "Sharpe Máximo": vol_sharpe,
+                    "Mínima Volatilidad": vol_minvol,
+                    "Pesos Iguales": vol_equal
+                }
+            }
 
         except Exception as e:
             st.error(f"Error: {e}")
+
+# ======================================================
+# MOSTRAR RESULTADOS (FUERA DEL BOTÓN)
+# ======================================================
+
+if st.session_state.analysis_done:
+    results = st.session_state.analysis_results
+
+    st.subheader("Comparación de estrategias")
+    st.dataframe(results["comparison"])
+
+    st.subheader("Pesos del portafolio recomendado")
+    st.dataframe(results["weights_recommended"])
+
+    df_retornos = pd.DataFrame(
+        {
+            "Retorno anual esperado": [
+                results["retornos"]["Sharpe Máximo"],
+                results["retornos"]["Mínima Volatilidad"],
+                results["retornos"]["Pesos Iguales"]
+            ]
+        },
+        index=["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"]
+    )
+
+    st.subheader("Ratio / retorno esperado por estrategia")
+    st.dataframe(df_retornos)
+
+
+st.divider()
+st.subheader("🤖 Asistente inteligente del portafolio")
+
+if not st.session_state.analysis_done:
+    st.info("Ejecuta primero la optimización para habilitar el asistente.")
+else:
+    import os
+    from openai import OpenAI
+
+    if not os.getenv("OPENAI_API_KEY"):
+        st.warning("El asistente requiere una API Key válida de OpenAI.")
+    else:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = []
+
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        user_question = st.chat_input(
+            "Pregunta sobre los tickers, riesgos o el portafolio recomendado"
+        )
+
+        if user_question:
+            st.session_state.chat_messages.append(
+                {"role": "user", "content": user_question}
+            )
+
+            results = st.session_state.analysis_results
+
+            # Obtener pesos óptimos del portafolio recomendado
+            best_strategy = results["best"]
+            weights_dict = results["weights"][best_strategy]
+
+            weights_text = "\n".join(
+                [f"- {ticker}: {weight:.2%}"
+                for ticker, weight in weights_dict.items()]
+            )
+
+            system_prompt = f"""
+            Eres un analista financiero profesional.
+
+            Activos analizados:
+            {', '.join(results['tickers'])}
+
+            Portafolio recomendado:
+            {results['best']}
+
+            Pesos óptimos del portafolio recomendado:
+            {weights_text}
+
+            Reglas estrictas:
+            - Usa EXCLUSIVAMENTE esta información.
+            - Si el usuario pregunta cómo invertir un monto específico, 
+              calcula los valores usando estos pesos.
+            - No inventes datos.
+            - Explica de forma clara para usuarios no técnicos.
+            """
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *st.session_state.chat_messages
+                ],
+                temperature=0.3
+            )
+
+            answer = response.choices[0].message.content
+
+            st.session_state.chat_messages.append(
+                {"role": "assistant", "content": answer}
+            )
+
+            with st.chat_message("assistant"):
+                st.markdown(answer)
 
 
 
