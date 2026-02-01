@@ -529,7 +529,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"],
                 "MSCI World (URTH)": benchmark_cum["URTH"]
             })
-
+            st.line_chart(comparison_cum)
 
             # =====================================================================
             # 9) SÍNTESIS ANALÍTICA PARA EL ASISTENTE (PERSISTENTE)
@@ -1039,6 +1039,7 @@ else:
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+
 
 
 
