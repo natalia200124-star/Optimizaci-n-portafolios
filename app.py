@@ -176,6 +176,34 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             dd_equal = max_drawdown(cum_equal)
 
             # =====================================================================
+            # 5.1) DESCARGA DE BENCHMARKS DE MERCADO
+            # =====================================================================
+
+            benchmarks = {
+                "S&P 500 (SPY)": "SPY",
+                "Nasdaq 100 (QQQ)": "QQQ",
+                "MSCI World (URTH)": "URTH"
+            }
+
+            benchmark_data = yf.download(
+                list(benchmarks.values()),
+                start=start_date,
+                end=end_date,
+                auto_adjust=False,
+                progress=False
+            )["Adj Close"]
+
+            # Asegurar formato correcto
+            if isinstance(benchmark_data.columns, pd.MultiIndex):
+                benchmark_data = benchmark_data.droplevel(0, axis=1)
+
+            benchmark_data = benchmark_data.ffill().dropna()
+
+            benchmark_returns = benchmark_data.pct_change().dropna()
+            benchmark_cum = (1 + benchmark_returns).cumprod()
+
+
+            # =====================================================================
             # 6) FRONTERA EFICIENTE
             # =====================================================================
             target_returns = np.linspace(
@@ -456,6 +484,82 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             sino también bajo escenarios adversos.
             """
             )
+
+            # =====================================================================
+            # 8.5) COMPARACIÓN CON BENCHMARKS DE MERCADO
+            # =====================================================================
+
+            st.subheader("Comparación con benchmarks de mercado")
+
+            def annualized_return(series):
+                return (series.iloc[-1]) ** (252 / len(series)) - 1
+
+            def annualized_vol(series):
+                return series.std() * np.sqrt(252)
+
+            benchmark_summary = []
+
+            for name, ticker in benchmarks.items():
+                ret = annualized_return(benchmark_cum[ticker])
+                vol = annualized_vol(benchmark_returns[ticker])
+                dd = max_drawdown(benchmark_cum[ticker])
+
+                benchmark_summary.append({
+                    "Benchmark": name,
+                    "Retorno Anual": ret,
+                    "Volatilidad": vol,
+                    "Retorno Acumulado": benchmark_cum[ticker].iloc[-1] - 1,
+                    "Máx Drawdown": dd
+                })
+
+            df_benchmarks = pd.DataFrame(benchmark_summary)
+            st.dataframe(df_benchmarks)
+
+            # =====================================================================
+            # 8.6) RENDIMIENTO ACUMULADO: ESTRATEGIAS VS BENCHMARKS
+            # =====================================================================
+
+            st.subheader("Rendimiento acumulado: estrategias vs benchmarks")
+
+            comparison_cum = pd.DataFrame({
+                "Sharpe Máximo": cum_sharpe,
+                "Mínima Volatilidad": cum_minvol,
+                "Pesos Iguales": cum_equal,
+                "S&P 500 (SPY)": benchmark_cum["SPY"],
+                "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"],
+                "MSCI World (URTH)": benchmark_cum["URTH"]
+            })
+
+            st.line_chart(comparison_cum)
+
+            st.subheader("📊 Interpretación frente a benchmarks de mercado")
+
+            def interpretar_benchmark(nombre, retorno_estrategia, retorno_benchmark):
+                diferencia = retorno_estrategia - retorno_benchmark
+                
+                if diferencia > 0.05:
+                    return f"La estrategia optimizada supera claramente al {nombre}, evidenciando un mayor rendimiento acumulado y una gestión activa del riesgo más eficiente."
+                elif diferencia > 0:
+                    return f"La estrategia optimizada obtiene un rendimiento ligeramente superior al {nombre}, mostrando una mejora marginal frente a la inversión pasiva."
+                elif diferencia > -0.05:
+                    return f"La estrategia presenta un comportamiento similar al {nombre}, lo que sugiere una eficiencia comparable a la del mercado."
+                else:
+                    return f"La estrategia se sitúa por debajo del {nombre}, indicando que en este periodo la inversión pasiva habría sido más rentable."
+
+            # Ejemplo: usando Sharpe Máximo
+            retorno_sharpe = resultados["Sharpe Máximo"]["retorno_acumulado"]
+
+            benchmarks = {
+                "S&P 500 (SPY)": retorno_spy,
+                "Nasdaq 100 (QQQ)": retorno_qqq,
+                "MSCI World (URTH)": retorno_urth
+            }
+
+            for nombre, retorno_bench in benchmarks.items():
+                st.markdown(
+                    f"**{nombre}:** {interpretar_benchmark(nombre, retorno_sharpe, retorno_bench)}"
+                )
+
 
             # =====================================================================
             # 9) SÍNTESIS ANALÍTICA PARA EL ASISTENTE (PERSISTENTE)
@@ -965,6 +1069,7 @@ else:
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+
 
 
 
