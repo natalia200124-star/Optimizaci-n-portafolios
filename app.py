@@ -530,36 +530,6 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 "MSCI World (URTH)": benchmark_cum["URTH"]
             })
 
-            st.line_chart(comparison_cum)
-
-            st.subheader("📊 Interpretación frente a benchmarks de mercado")
-
-            def interpretar_benchmark(nombre, retorno_estrategia, retorno_benchmark):
-                diferencia = retorno_estrategia - retorno_benchmark
-                
-                if diferencia > 0.05:
-                    return f"La estrategia optimizada supera claramente al {nombre}, evidenciando un mayor rendimiento acumulado y una gestión activa del riesgo más eficiente."
-                elif diferencia > 0:
-                    return f"La estrategia optimizada obtiene un rendimiento ligeramente superior al {nombre}, mostrando una mejora marginal frente a la inversión pasiva."
-                elif diferencia > -0.05:
-                    return f"La estrategia presenta un comportamiento similar al {nombre}, lo que sugiere una eficiencia comparable a la del mercado."
-                else:
-                    return f"La estrategia se sitúa por debajo del {nombre}, indicando que en este periodo la inversión pasiva habría sido más rentable."
-
-            # Ejemplo: usando Sharpe Máximo
-            retorno_sharpe = resultados["Sharpe Máximo"]["retorno_acumulado"]
-
-            benchmarks = {
-                "S&P 500 (SPY)": retorno_spy,
-                "Nasdaq 100 (QQQ)": retorno_qqq,
-                "MSCI World (URTH)": retorno_urth
-            }
-
-            for nombre, retorno_bench in benchmarks.items():
-                st.markdown(
-                    f"**{nombre}:** {interpretar_benchmark(nombre, retorno_sharpe, retorno_bench)}"
-                )
-
 
             # =====================================================================
             # 9) SÍNTESIS ANALÍTICA PARA EL ASISTENTE (PERSISTENTE)
@@ -1069,6 +1039,7 @@ else:
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+
 
 
 
