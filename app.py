@@ -515,6 +515,60 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             df_benchmarks = pd.DataFrame(benchmark_summary)
             st.dataframe(df_benchmarks)
 
+            st.markdown("""
+            ### ¿Qué es un benchmark?
+
+            Un **benchmark** es un **punto de referencia** que se utiliza para evaluar si una estrategia de inversión es buena o mala.  
+            Funciona de forma similar a una *regla de medición*: permite comparar los resultados obtenidos con una alternativa estándar y ampliamente utilizada en los mercados financieros.
+
+            En este trabajo, los benchmarks representan **formas simples y comunes de invertir**, frente a las cuales se comparan las estrategias optimizadas desarrolladas en la aplicación.
+
+            ### ¿Qué representa el S&P 500?
+
+            El **S&P 500** es uno de los índices bursátiles más conocidos del mundo. Agrupa a aproximadamente **500 de las empresas más grandes de Estados Unidos**, como Apple, Microsoft o Google.  
+            Invertir en el S&P 500 se considera una aproximación al comportamiento general del mercado y suele utilizarse como referencia básica para evaluar el desempeño de cualquier portafolio.
+
+            Si una estrategia no logra superar al S&P 500 en el largo plazo, resulta difícil justificar su complejidad frente a una inversión pasiva en el mercado.
+
+            ### ¿Qué es el MSCI?
+
+            **MSCI** (Morgan Stanley Capital International) es una empresa internacional que elabora **índices bursátiles** utilizados como referencia en todo el mundo.  
+            Un índice MSCI representa el comportamiento de un conjunto amplio de empresas de una región o del mercado global.
+
+            Por ejemplo:
+            - **MSCI World** agrupa empresas grandes y medianas de países desarrollados.
+            - **MSCI Emerging Markets** representa mercados emergentes.
+
+            Estos índices se utilizan como benchmark porque reflejan el desempeño promedio de mercados completos y permiten evaluar si una estrategia supera o no una inversión diversificada a nivel internacional.
+
+            ### ¿Qué es el NASDAQ?
+
+            El **NASDAQ** es una bolsa de valores estadounidense caracterizada por una **alta concentración de empresas tecnológicas y de innovación**, como Apple, Microsoft, Amazon o Google.  
+            El índice NASDAQ suele mostrar mayores crecimientos en periodos de expansión económica, pero también presenta **mayor volatilidad** en momentos de crisis.
+
+            Por esta razón, el NASDAQ se utiliza como benchmark para comparar estrategias con un perfil más dinámico y orientado al crecimiento, especialmente en sectores tecnológicos.
+
+            ### ¿Por qué se incluyen estos índices como benchmarks?
+
+            La inclusión del **S&P 500, MSCI y NASDAQ** permite comparar los portafolios optimizados con:
+            - El comportamiento general del mercado estadounidense (S&P 500),
+            - Una referencia de diversificación global (MSCI),
+            - Un mercado de alto crecimiento y mayor riesgo (NASDAQ).
+
+            De esta forma, se obtiene una evaluación más completa del desempeño relativo de las estrategias desarrolladas en la aplicación.
+
+            ### ¿Por qué se comparan varias estrategias?
+
+            Además del S&P 500, se incluyen otras estrategias como:
+            - **Pesos iguales**, donde todos los activos reciben la misma proporción.
+            - **Portafolio de mínima volatilidad**, orientado a reducir el riesgo.
+            - **Portafolio de Sharpe máximo**, que busca el mejor retorno ajustado por riesgo.
+
+            La comparación con estos benchmarks permite responder una pregunta clave:
+            **¿La optimización realmente mejora los resultados frente a alternativas simples y ampliamente utilizadas?**
+            """)
+
+
             # =====================================================================
             # 8.6) RENDIMIENTO ACUMULADO: ESTRATEGIAS VS BENCHMARKS
             # =====================================================================
@@ -529,7 +583,21 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"],
                 "MSCI World (URTH)": benchmark_cum["URTH"]
             })
+
             st.line_chart(comparison_cum)
+
+            st.markdown("""
+            **Cómo interpretar la gráfica de rendimiento acumulado**
+
+            Esta gráfica muestra cómo habría evolucionado una inversión inicial a lo largo del tiempo bajo cada estrategia.
+
+            - La línea que termina **más arriba** representa la estrategia con **mayor crecimiento acumulado**.
+            - Las curvas más **suaves y estables** indican menor volatilidad y menor exposición a crisis.
+            - Caídas pronunciadas reflejan periodos de estrés de mercado; una recuperación rápida indica mayor resiliencia.
+            - Si una estrategia optimizada supera de forma consistente a los benchmarks, se confirma que el modelo aporta valor frente a una inversión pasiva.
+
+            La interpretación conjunta del gráfico permite evaluar no solo cuánto se gana, sino **cómo se gana**, identificando estrategias más robustas frente a escenarios adversos.
+            """)
 
             # =====================================================================
             # 9) SÍNTESIS ANALÍTICA PARA EL ASISTENTE (PERSISTENTE)
@@ -1039,6 +1107,7 @@ else:
 
             with st.chat_message("assistant"):
                 st.markdown(answer)
+
 
 
 
