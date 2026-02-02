@@ -1016,117 +1016,36 @@ import time
 # 🤖 ASISTENTE INTELIGENTE DEL PORTAFOLIO (ESTABLE)
 # ======================================================
 
-import os
-import time
 from openai import OpenAI
+import os
 
-st.divider()
-st.subheader("🤖 Asistente inteligente del portafolio")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-if not st.session_state.get("analysis_done", False):
-    st.info("Ejecuta primero la optimización para habilitar el asistente.")
-else:
-    if not os.getenv("OPENAI_API_KEY"):
-        st.warning("Se requiere una API Key válida de OpenAI.")
-    else:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+if user_question:
 
-        # ⏱️ Control por tiempo (NO flags)
-        if "last_openai_call" not in st.session_state:
-            st.session_state.last_openai_call = 0.0
+    st.session_state.chat_messages.append(
+        {"role": "user", "content": user_question}
+    )
 
-        COOLDOWN = 5  # segundos
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            *st.session_state.chat_messages
+        ],
+        temperature=0.3
+    )
 
-        # 🧠 Inicializar historial UNA sola vez
-        if "conversation_history" not in st.session_state:
-            results = st.session_state.analysis_results
-            best_strategy = results["best"]
+    answer = response.choices[0].message.content
 
-            weights_text = "\n".join(
-                f"- {k}: {v:.2%}"
-                for k, v in results["weights"][best_strategy].items()
-            )
+    st.session_state.chat_messages.append(
+        {"role": "assistant", "content": answer}
+    )
 
-            asset_text = "\n".join(
-                f"- {k}: retorno anual={v['retorno_anual']:.2%}, "
-                f"volatilidad={v['volatilidad']:.2%}"
-                for k, v in results["asset_summary"].items()
-            )
+    with st.chat_message("assistant"):
+        st.markdown(answer)
 
-            strategy_text = "\n".join(
-                f"- {k}: retorno={v['retorno']:.2%}, "
-                f"volatilidad={v['volatilidad']:.2%}, "
-                f"Sharpe={v['sharpe']:.2f}, "
-                f"drawdown={v['drawdown']:.2%}"
-                for k, v in results["strategy_summary"].items()
-            )
 
-            system_prompt = f"""
-Eres un analista financiero profesional.
-
-Activos analizados:
-{', '.join(results['tickers'])}
-
-Resumen cuantitativo de activos:
-{asset_text}
-
-Comparación de estrategias:
-{strategy_text}
-
-Portafolio recomendado:
-{best_strategy}
-
-Pesos óptimos del portafolio recomendado:
-{weights_text}
-
-Reglas:
-- Usa solo esta información
-- No inventes datos
-- Responde con claridad
-"""
-
-            st.session_state.conversation_history = [
-                {"role": "system", "content": system_prompt}
-            ]
-
-        # Mostrar historial
-        for msg in st.session_state.conversation_history:
-            if msg["role"] != "system":
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-        # Input
-        user_question = st.chat_input(
-            "Pregunta sobre riesgos, retornos o el portafolio"
-        )
-
-        # Llamada estable
-        if user_question:
-            now = time.time()
-
-            if now - st.session_state.last_openai_call < COOLDOWN:
-                st.warning("⏳ Espera unos segundos antes de otra pregunta.")
-            else:
-                st.session_state.last_openai_call = now
-
-                st.session_state.conversation_history.append(
-                    {"role": "user", "content": user_question}
-                )
-
-                with st.spinner("Analizando tu pregunta..."):
-                    response = client.responses.create(
-                        model="gpt-4.1-mini",
-                        input=st.session_state.conversation_history
-                    )
-
-                    answer = response.output_text
-
-                st.session_state.conversation_history.append(
-                    {"role": "assistant", "content": answer}
-                )
-
-                with st.chat_message("assistant"):
-                    st.markdown(answer)
 
 
 
