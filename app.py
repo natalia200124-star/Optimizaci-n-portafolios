@@ -1013,42 +1013,38 @@ from openai import OpenAI
 import time
 
 # ======================================================
-# ASISTENTE INTELIGENTE (VERSIÓN ESTABLE Y FINAL)
+# 🤖 ASISTENTE INTELIGENTE DEL PORTAFOLIO (ESTABLE)
 # ======================================================
+
+import os
+import time
+from openai import OpenAI
 
 st.divider()
 st.subheader("🤖 Asistente inteligente del portafolio")
 
-# 0️⃣ Validar que el análisis exista
 if not st.session_state.get("analysis_done", False):
-    st.info("Ejecuta primero el análisis para habilitar el asistente.")
+    st.info("Ejecuta primero la optimización para habilitar el asistente.")
 else:
-
-    # 1️⃣ Validar API Key
     if not os.getenv("OPENAI_API_KEY"):
         st.warning("Se requiere una API Key válida de OpenAI.")
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # 2️⃣ Control anti-duplicación (CLAVE)
-        if "openai_busy" not in st.session_state:
-            st.session_state.openai_busy = False
-
+        # ⏱️ Control por tiempo (NO flags)
         if "last_openai_call" not in st.session_state:
             st.session_state.last_openai_call = 0.0
 
-        COOLDOWN = 8  # segundos
-        now = time.time()
+        COOLDOWN = 5  # segundos
 
-        # 3️⃣ Inicializar historial UNA SOLA VEZ
+        # 🧠 Inicializar historial UNA sola vez
         if "conversation_history" not in st.session_state:
-
             results = st.session_state.analysis_results
             best_strategy = results["best"]
-            weights_dict = results["weights"][best_strategy]
 
             weights_text = "\n".join(
-                f"- {k}: {v:.2%}" for k, v in weights_dict.items()
+                f"- {k}: {v:.2%}"
+                for k, v in results["weights"][best_strategy].items()
             )
 
             asset_text = "\n".join(
@@ -1086,39 +1082,38 @@ Pesos óptimos del portafolio recomendado:
 Reglas:
 - Usa solo esta información
 - No inventes datos
-- Responde de forma clara y técnica
+- Responde con claridad
 """
 
             st.session_state.conversation_history = [
                 {"role": "system", "content": system_prompt}
             ]
 
-        # 4️⃣ Mostrar historial (sin system)
+        # Mostrar historial
         for msg in st.session_state.conversation_history:
             if msg["role"] != "system":
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
 
-        # 5️⃣ Input del usuario
+        # Input
         user_question = st.chat_input(
             "Pregunta sobre riesgos, retornos o el portafolio"
         )
 
-        # 6️⃣ Llamada controlada a OpenAI
-        if (
-            user_question
-            and not st.session_state.openai_busy
-            and (now - st.session_state.last_openai_call) > COOLDOWN
-        ):
-            st.session_state.openai_busy = True
-            st.session_state.last_openai_call = now
+        # Llamada estable
+        if user_question:
+            now = time.time()
 
-            st.session_state.conversation_history.append(
-                {"role": "user", "content": user_question}
-            )
+            if now - st.session_state.last_openai_call < COOLDOWN:
+                st.warning("⏳ Espera unos segundos antes de otra pregunta.")
+            else:
+                st.session_state.last_openai_call = now
 
-            with st.spinner("Analizando tu pregunta..."):
-                try:
+                st.session_state.conversation_history.append(
+                    {"role": "user", "content": user_question}
+                )
+
+                with st.spinner("Analizando tu pregunta..."):
                     response = client.responses.create(
                         model="gpt-4.1-mini",
                         input=st.session_state.conversation_history
@@ -1126,21 +1121,14 @@ Reglas:
 
                     answer = response.output_text
 
-                    st.session_state.conversation_history.append(
-                        {"role": "assistant", "content": answer}
-                    )
+                st.session_state.conversation_history.append(
+                    {"role": "assistant", "content": answer}
+                )
 
-                    with st.chat_message("assistant"):
-                        st.markdown(answer)
+                with st.chat_message("assistant"):
+                    st.markdown(answer)
 
-                except Exception:
-                    st.error(
-                        "⚠️ El asistente está ocupado. "
-                        "Espera unos segundos e intenta de nuevo."
-                    )
 
-                finally:
-                    st.session_state.openai_busy = False
 
 
 
