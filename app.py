@@ -5,9 +5,6 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from datetime import datetime
-import os
-import time
-from openai import OpenAI
 
 # =========================
 # SESSION STATE - INICIALIZACIÓN
@@ -177,34 +174,6 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             dd_sharpe = max_drawdown(cum_sharpe)
             dd_minvol = max_drawdown(cum_minvol)
             dd_equal = max_drawdown(cum_equal)
-
-            # =====================================================================
-            # 5.1) DESCARGA DE BENCHMARKS DE MERCADO
-            # =====================================================================
-
-            benchmarks = {
-                "S&P 500 (SPY)": "SPY",
-                "Nasdaq 100 (QQQ)": "QQQ",
-                "MSCI World (URTH)": "URTH"
-            }
-
-            benchmark_data = yf.download(
-                list(benchmarks.values()),
-                start=start_date,
-                end=end_date,
-                auto_adjust=False,
-                progress=False
-            )["Adj Close"]
-
-            # Asegurar formato correcto
-            if isinstance(benchmark_data.columns, pd.MultiIndex):
-                benchmark_data = benchmark_data.droplevel(0, axis=1)
-
-            benchmark_data = benchmark_data.ffill().dropna()
-
-            benchmark_returns = benchmark_data.pct_change().dropna()
-            benchmark_cum = (1 + benchmark_returns).cumprod()
-
 
             # =====================================================================
             # 6) FRONTERA EFICIENTE
@@ -487,119 +456,6 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             sino también bajo escenarios adversos.
             """
             )
-
-            # =====================================================================
-            # 8.5) COMPARACIÓN CON BENCHMARKS DE MERCADO
-            # =====================================================================
-
-            st.subheader("Comparación con benchmarks de mercado")
-
-            def annualized_return(series):
-                return (series.iloc[-1]) ** (252 / len(series)) - 1
-
-            def annualized_vol(series):
-                return series.std() * np.sqrt(252)
-
-            benchmark_summary = []
-
-            for name, ticker in benchmarks.items():
-                ret = annualized_return(benchmark_cum[ticker])
-                vol = annualized_vol(benchmark_returns[ticker])
-                dd = max_drawdown(benchmark_cum[ticker])
-
-                benchmark_summary.append({
-                    "Benchmark": name,
-                    "Retorno Anual": ret,
-                    "Volatilidad": vol,
-                    "Retorno Acumulado": benchmark_cum[ticker].iloc[-1] - 1,
-                    "Máx Drawdown": dd
-                })
-
-            df_benchmarks = pd.DataFrame(benchmark_summary)
-            st.dataframe(df_benchmarks)
-
-            st.markdown("""
-            ### ¿Qué es un benchmark?
-
-            Un **benchmark** es un **punto de referencia** que se utiliza para evaluar si una estrategia de inversión es buena o mala.
-            Funciona de forma similar a una *regla de medición*: permite comparar los resultados obtenidos con una alternativa estándar y ampliamente utilizada en los mercados financieros.
-
-            En este trabajo, los benchmarks representan **formas simples y comunes de invertir**, frente a las cuales se comparan las estrategias optimizadas desarrolladas en la aplicación.
-
-            ### ¿Qué representa el S&P 500?
-
-            El **S&P 500** es uno de los índices bursátiles más conocidos del mundo. Agrupa a aproximadamente **500 de las empresas más grandes de Estados Unidos**, como Apple, Microsoft o Google.
-            Invertir en el S&P 500 se considera una aproximación al comportamiento general del mercado y suele utilizarse como referencia básica para evaluar el desempeño de cualquier portafolio.
-
-            Si una estrategia no logra superar al S&P 500 en el largo plazo, resulta difícil justificar su complejidad frente a una inversión pasiva en el mercado.
-
-            ### ¿Qué es el MSCI?
-
-            **MSCI** (Morgan Stanley Capital International) es una empresa internacional que elabora **índices bursátiles** utilizados como referencia en todo el mundo.
-            Un índice MSCI representa el comportamiento de un conjunto amplio de empresas de una región o del mercado global.
-
-            Por ejemplo:
-            - **MSCI World** agrupa empresas grandes y medianas de países desarrollados.
-            - **MSCI Emerging Markets** representa mercados emergentes.
-
-            Estos índices se utilizan como benchmark porque reflejan el desempeño promedio de mercados completos y permiten evaluar si una estrategia supera o no una inversión diversificada a nivel internacional.
-
-            ### ¿Qué es el NASDAQ?
-
-            El **NASDAQ** es una bolsa de valores estadounidense caracterizada por una **alta concentración de empresas tecnológicas y de innovación**, como Apple, Microsoft, Amazon o Google.
-            El índice NASDAQ suele mostrar mayores crecimientos en periodos de expansión económica, pero también presenta **mayor volatilidad** en momentos de crisis.
-
-            Por esta razón, el NASDAQ se utiliza como benchmark para comparar estrategias con un perfil más dinámico y orientado al crecimiento, especialmente en sectores tecnológicos.
-
-            ### ¿Por qué se incluyen estos índices como benchmarks?
-
-            La inclusión del **S&P 500, MSCI y NASDAQ** permite comparar los portafolios optimizados con:
-            - El comportamiento general del mercado estadounidense (S&P 500),
-            - Una referencia de diversificación global (MSCI),
-            - Un mercado de alto crecimiento y mayor riesgo (NASDAQ).
-
-            De esta forma, se obtiene una evaluación más completa del desempeño relativo de las estrategias desarrolladas en la aplicación.
-
-            ### ¿Por qué se comparan varias estrategias?
-
-            Además del S&P 500, se incluyen otras estrategias como:
-            - **Pesos iguales**, donde todos los activos reciben la misma proporción.
-            - **Portafolio de mínima volatilidad**, orientado a reducir el riesgo.
-            - **Portafolio de Sharpe máximo**, que busca el mejor retorno ajustado por riesgo.
-
-            La comparación con estos benchmarks permite responder una pregunta clave:
-            **¿La optimización realmente mejora los resultados frente a alternativas simples y ampliamente utilizadas?**
-            """)
-
-            # =====================================================================
-            # 8.6) RENDIMIENTO ACUMULADO: ESTRATEGIAS VS BENCHMARKS
-            # =====================================================================
-
-            st.subheader("Rendimiento acumulado: estrategias vs benchmarks")
-
-            comparison_cum = pd.DataFrame({
-                "Sharpe Máximo": cum_sharpe,
-                "Mínima Volatilidad": cum_minvol,
-                "Pesos Iguales": cum_equal,
-                "S&P 500 (SPY)": benchmark_cum["SPY"],
-                "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"],
-                "MSCI World (URTH)": benchmark_cum["URTH"]
-            })
-
-            st.line_chart(comparison_cum)
-
-            st.markdown("""
-            **Cómo interpretar la gráfica de rendimiento acumulado**
-
-            Esta gráfica muestra cómo habría evolucionado una inversión inicial a lo largo del tiempo bajo cada estrategia.
-
-            - La línea que termina **más arriba** representa la estrategia con **mayor crecimiento acumulado**.
-            - Las curvas más **suaves y estables** indican menor volatilidad y menor exposición a crisis.
-            - Caídas pronunciadas reflejan periodos de estrés de mercado; una recuperación rápida indica mayor resiliencia.
-            - Si una estrategia optimizada supera de forma consistente a los benchmarks, se confirma que el modelo aporta valor frente a una inversión pasiva.
-
-            La interpretación conjunta del gráfico permite evaluar no solo cuánto se gana, sino **cómo se gana**, identificando estrategias más robustas frente a escenarios adversos.
-            """)
 
             # =====================================================================
             # 9) SÍNTESIS ANALÍTICA PARA EL ASISTENTE (PERSISTENTE)
@@ -983,6 +839,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
 
         except Exception as e:
             st.error(f"Error: {e}")
+
 # ======================================================
 # MOSTRAR RESULTADOS (FUERA DEL BOTÓN)
 # ======================================================
@@ -1011,128 +868,104 @@ if st.session_state.analysis_done:
     st.dataframe(df_retornos)
 
 
-# ======================================================
-# ASISTENTE INTELIGENTE
-# ======================================================
-
 st.divider()
 st.subheader("🤖 Asistente inteligente del portafolio")
 
-# ------------------------------------------------------
-# 0️⃣ Validar que el análisis previo exista
-# ------------------------------------------------------
-if not st.session_state.get("analysis_done", False):
-    st.info("Ejecuta primero el análisis para habilitar el asistente.")
+if not st.session_state.analysis_done:
+    st.info("Ejecuta primero la optimización para habilitar el asistente.")
 else:
+    import os
+    from openai import OpenAI
 
-    # --------------------------------------------------
-    # 1️⃣ Validar API Key
-    # --------------------------------------------------
     if not os.getenv("OPENAI_API_KEY"):
-        st.warning("Se requiere una API Key válida de OpenAI.")
+        st.warning("El asistente requiere una API Key válida de OpenAI.")
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # --------------------------------------------------
-        # 2️⃣ Inicializar HISTORIAL ÚNICO DEL CHAT
-        # --------------------------------------------------
-        if "conversation_history" not in st.session_state:
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = []
+
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        user_question = st.chat_input(
+            "Pregunta sobre los tickers, riesgos o el portafolio recomendado"
+        )
+
+        if user_question:
+            st.session_state.chat_messages.append(
+                {"role": "user", "content": user_question}
+            )
 
             results = st.session_state.analysis_results
+
+            # Obtener pesos óptimos del portafolio recomendado
             best_strategy = results["best"]
             weights_dict = results["weights"][best_strategy]
 
-            weights_text = "\n".join(
-                f"- {k}: {v:.2%}" for k, v in weights_dict.items()
-            )
+            weights_text = "\n".join([
+                f"- {k}: {v:.2%}"
+                for k, v in weights_dict.items()
+            ])
 
-            asset_text = "\n".join(
+            asset_text = "\n".join([
                 f"- {k}: retorno anual={v['retorno_anual']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}"
                 for k, v in results["asset_summary"].items()
-            )
+            ])
 
-            strategy_text = "\n".join(
+            strategy_text = "\n".join([
                 f"- {k}: retorno={v['retorno']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}, "
                 f"Sharpe={v['sharpe']:.2f}, "
                 f"drawdown={v['drawdown']:.2%}"
                 for k, v in results["strategy_summary"].items()
-            )
+            ])
 
             system_prompt = f"""
-Eres un analista financiero profesional.
+            Eres un analista financiero profesional.
 
-Activos analizados:
-{', '.join(results['tickers'])}
+            Activos analizados:
+            {', '.join(results['tickers'])}
 
-Resumen cuantitativo de activos:
-{asset_text}
+            Resumen cuantitativo de activos:
+            {asset_text}
 
-Comparación de estrategias:
-{strategy_text}
+            Comparación de estrategias:
+            {strategy_text}
 
-Portafolio recomendado:
-{best_strategy}
+            Portafolio recomendado:
+            {results['best']}
 
-Pesos óptimos del portafolio recomendado:
-{weights_text}
+            Pesos óptimos del portafolio recomendado:
+            {weights_text}
 
-Reglas estrictas:
-- Usa únicamente esta información.
-- No inventes datos.
-- Responde de forma clara y técnica.
-"""
+            Reglas estrictas:
+            - Usa únicamente esta información.
+            - Interpreta riesgo, retorno y trade-offs.
+            - No inventes datos.
+            - Explica en lenguaje claro para usuarios no técnicos.
+            """
 
-            st.session_state.conversation_history = [
-                {"role": "system", "content": system_prompt}
-            ]
-
-        # --------------------------------------------------
-        # 3️⃣ Mostrar historial del chat
-        # --------------------------------------------------
-        for msg in st.session_state.conversation_history:
-            if msg["role"] != "system":
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-        # --------------------------------------------------
-        # 4️⃣ Input del usuario (UN SOLO CHAT)
-        # --------------------------------------------------
-        user_question = st.chat_input(
-            "Pregunta sobre los riesgos, retornos o el portafolio"
-        )
-
-        # --------------------------------------------------
-        # 5️⃣ Llamada ÚNICA al modelo con TODO el historial
-        # --------------------------------------------------
-        if user_question:
-
-            st.session_state.conversation_history.append(
-                {"role": "user", "content": user_question}
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *st.session_state.chat_messages
+                ],
+                temperature=0.3
             )
 
-            with st.spinner("Analizando tu pregunta..."):
-                try:
-                    response = client.responses.create(
-                        model="gpt-4.1-mini",
-                        input=st.session_state.conversation_history
-                    )
+            answer = response.choices[0].message.content
 
-                    answer = response.output_text
+            st.session_state.chat_messages.append(
+                {"role": "assistant", "content": answer}
+            )
 
-                    st.session_state.conversation_history.append(
-                        {"role": "assistant", "content": answer}
-                    )
+            with st.chat_message("assistant"):
+                st.markdown(answer)
 
-                    with st.chat_message("assistant"):
-                        st.markdown(answer)
-
-                except Exception:
-                    st.error(
-                        "⚠️ El asistente está temporalmente ocupado. "
-                        "Intenta nuevamente en unos segundos."
-                    )
 
 
 
