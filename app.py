@@ -1015,50 +1015,32 @@ if st.session_state.analysis_done:
 st.divider()
 st.subheader("🤖 Asistente inteligente del portafolio")
 
-if not st.session_state.analysis_done:
-    st.info("Ejecuta primero la optimización para habilitar el asistente.")
+# ------------------------------------------------------
+# 0️⃣ Validar que el análisis previo exista
+# ------------------------------------------------------
+if not st.session_state.get("analysis_done", False):
+    st.info("Ejecuta primero el análisis para habilitar el asistente.")
 else:
-    import os
-    from openai import OpenAI
 
+    # --------------------------------------------------
     # 1️⃣ Validar API Key
+    # --------------------------------------------------
     if not os.getenv("OPENAI_API_KEY"):
-        st.warning("El asistente requiere una API Key válida de OpenAI.")
+        st.warning("Se requiere una API Key válida de OpenAI.")
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # 2️⃣ Inicializar estados (CRÍTICO)
-        if "chat_messages" not in st.session_state:
-            st.session_state.chat_messages = []
-
-        if "llamando_openai" not in st.session_state:
-            st.session_state.llamando_openai = False
-
-        # 3️⃣ Mostrar historial
-        for msg in st.session_state.chat_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        # 4️⃣ Input del usuario
-        user_question = st.chat_input(
-            "Pregunta sobre los tickers, riesgos o el portafolio recomendado"
-        )
-
-        # 5️⃣ Llamada protegida a OpenAI
-        if user_question and not st.session_state.llamando_openai:
-            st.session_state.llamando_openai = True
-
-            st.session_state.chat_messages.append(
-                {"role": "user", "content": user_question}
-            )
+        # --------------------------------------------------
+        # 2️⃣ Inicializar HISTORIAL ÚNICO DEL CHAT
+        # --------------------------------------------------
+        if "conversation_history" not in st.session_state:
 
             results = st.session_state.analysis_results
             best_strategy = results["best"]
             weights_dict = results["weights"][best_strategy]
 
             weights_text = "\n".join(
-                f"- {k}: {v:.2%}"
-                for k, v in weights_dict.items()
+                f"- {k}: {v:.2%}" for k, v in weights_dict.items()
             )
 
             asset_text = "\n".join(
@@ -1088,7 +1070,7 @@ Comparación de estrategias:
 {strategy_text}
 
 Portafolio recomendado:
-{results['best']}
+{best_strategy}
 
 Pesos óptimos del portafolio recomendado:
 {weights_text}
@@ -1096,34 +1078,59 @@ Pesos óptimos del portafolio recomendado:
 Reglas estrictas:
 - Usa únicamente esta información.
 - No inventes datos.
-- Lenguaje claro.
+- Responde de forma clara y técnica.
 """
+
+            st.session_state.conversation_history = [
+                {"role": "system", "content": system_prompt}
+            ]
+
+        # --------------------------------------------------
+        # 3️⃣ Mostrar historial del chat
+        # --------------------------------------------------
+        for msg in st.session_state.conversation_history:
+            if msg["role"] != "system":
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+        # --------------------------------------------------
+        # 4️⃣ Input del usuario (UN SOLO CHAT)
+        # --------------------------------------------------
+        user_question = st.chat_input(
+            "Pregunta sobre los riesgos, retornos o el portafolio"
+        )
+
+        # --------------------------------------------------
+        # 5️⃣ Llamada ÚNICA al modelo con TODO el historial
+        # --------------------------------------------------
+        if user_question:
+
+            st.session_state.conversation_history.append(
+                {"role": "user", "content": user_question}
+            )
 
             with st.spinner("Analizando tu pregunta..."):
                 try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            *st.session_state.chat_messages
-                        ],
-                        temperature=0.3
+                    response = client.responses.create(
+                        model="gpt-4.1-mini",
+                        input=st.session_state.conversation_history
                     )
 
-                    answer = response.choices[0].message.content
+                    answer = response.output_text
 
-                    st.session_state.chat_messages.append(
+                    st.session_state.conversation_history.append(
                         {"role": "assistant", "content": answer}
                     )
 
+                    with st.chat_message("assistant"):
+                        st.markdown(answer)
+
                 except Exception:
                     st.error(
-                        "⚠️ El asistente está ocupado o alcanzó el límite. "
+                        "⚠️ El asistente está temporalmente ocupado. "
                         "Intenta nuevamente en unos segundos."
                     )
 
-                finally:
-                    st.session_state.llamando_openai = False
 
 
 
