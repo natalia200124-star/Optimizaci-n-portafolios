@@ -63,13 +63,13 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.stop()
 
         try:
-        
+
             # =====================================================================
             # 1.5) DESCARGA Y DEPURACIÓN DE DATOS (SIN LOOK-AHEAD BIAS)
             # =====================================================================
             end_date = datetime.today()
             start_date = end_date.replace(year=end_date.year - years)
-                        
+
             raw_data = yf.download(
                 tickers,
                 start=start_date,
@@ -240,15 +240,15 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
                 """
                 **Interpretación:**
-                
+
                 Este gráfico muestra la evolución histórica de los precios ajustados de cada activo
                 durante el horizonte temporal seleccionado.
-                
+
                 - Tendencias crecientes indican periodos de apreciación del activo.
                 - Periodos de alta pendiente reflejan fases de crecimiento acelerado.
                 - Movimientos bruscos o caídas pronunciadas suelen asociarse a eventos de mercado
                   o episodios de alta volatilidad.
-                
+
                 Este análisis permite identificar activos con comportamientos más estables
                 frente a otros con mayor variabilidad en el tiempo.
                 """
@@ -285,11 +285,11 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
 
                 """
                 **Interpretación analítica de la comparación de estrategias:**
-                
+
                 Esta tabla sintetiza el desempeño de las distintas estrategias
                 de construcción de portafolios bajo un enfoque riesgo–retorno,
                 permitiendo una evaluación integral y comparativa.
-                
+
                 - La estrategia de **Sharpe Máximo** tiende a ofrecer el mayor
                   retorno ajustado por riesgo, aunque suele presentar niveles
                   más elevados de volatilidad y drawdowns en periodos adversos.
@@ -298,15 +298,15 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                   a costa de un menor potencial de crecimiento.
                 - La estrategia de **Pesos Iguales** actúa como referencia neutral,
                   proporcionando una diversificación básica sin optimización explícita.
-                
+
                 La combinación de métricas como retorno anual, volatilidad,
                 Ratio de Sharpe y máximo drawdown permite identificar no solo
                 la estrategia más rentable, sino también la más resiliente
                 frente a escenarios de estrés de mercado.
-                
+
                 Este análisis respalda decisiones de asignación de activos
                 alineadas con el horizonte temporal y el perfil de riesgo del inversor.
-                """            
+                """
             )
 
             # =====================================================================
@@ -329,16 +329,16 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 - Picos altos suelen coincidir con periodos de crisis.
                 - Estrategias más estables presentan curvas más suaves.
                 """
-                """                              
+                """
                 La volatilidad histórica móvil permite analizar cómo
                 evoluciona el riesgo del portafolio a lo largo del tiempo,
                 capturando cambios estructurales en el comportamiento del mercado.
-                
+
                 - Incrementos abruptos de la volatilidad suelen coincidir
                   con periodos de crisis financiera o incertidumbre macroeconómica.
                 - Curvas más suaves indican estrategias con mayor estabilidad
                   y menor sensibilidad a shocks de mercado.
-                
+
                 En el análisis comparativo:
                 - El portafolio de **Sharpe Máximo** presenta picos de
                   volatilidad más elevados, reflejando una mayor exposición
@@ -347,7 +347,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                   de riesgo más controlado a lo largo del tiempo.
                 - La asignación de **Pesos Iguales** muestra un comportamiento
                   intermedio, replicando parcialmente la dinámica del mercado.
-                
+
                 Este enfoque dinámico del riesgo complementa las métricas
                 estáticas tradicionales y aporta una visión más realista
                 del comportamiento del portafolio.
@@ -374,12 +374,12 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
                 """
                 **Interpretación analítica del Ratio Calmar:**
-                
+
                 El Ratio Calmar relaciona el **retorno anual esperado** con el
                 **máximo drawdown histórico**, ofreciendo una medida directa
                 de la capacidad del portafolio para generar rentabilidad
                 sin incurrir en pérdidas extremas prolongadas.
-                
+
                 - Un **Ratio Calmar elevado** indica que la estrategia logra
                   retornos atractivos manteniendo caídas relativamente
                   controladas.
@@ -388,18 +388,18 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 - Esta métrica resulta especialmente relevante para
                   inversionistas con enfoque conservador o con restricciones
                   estrictas de preservación de capital.
-                
+
                 A diferencia del Ratio de Sharpe, el Calmar se centra en el
                 **riesgo extremo observado**, lo que lo convierte en un
                 indicador complementario para evaluar la resiliencia del
                 portafolio en periodos de crisis o alta volatilidad.
-                
+
                 En el contexto del presente análisis, el Ratio Calmar permite
                 identificar qué estrategia ofrece un **mejor equilibrio entre
                 crecimiento del capital y control de pérdidas severas**,
                 reforzando la robustez del proceso de selección de portafolios.
                 """
-            )            
+            )
 
             # =====================================================================
             # 8.3) SORTINO RATIO
@@ -424,11 +424,11 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
             """
             **Interpretación analítica del Ratio Sortino:**
-            
+
             El Ratio Sortino evalúa el desempeño del portafolio considerando
             exclusivamente la **volatilidad negativa**, es decir, aquellas
             fluctuaciones que representan pérdidas para el inversor.
-            
+
             - Un **valor más alto de Sortino** indica que la estrategia genera
               mayor retorno por cada unidad de riesgo a la baja asumida.
             - A diferencia del Ratio de Sharpe, este indicador **no penaliza
@@ -437,7 +437,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             - Estrategias con Sortino elevado suelen ser más adecuadas para
               escenarios de mercado inciertos o para perfiles que priorizan
               la protección frente a caídas.
-            
+
             En el contexto del análisis comparativo, el Ratio Sortino permite
             identificar qué estrategia ofrece una **mejor compensación entre
             retorno y riesgo negativo**, aportando una visión complementaria
@@ -461,16 +461,16 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
             """
             **Interpretación del comportamiento en periodo de crisis:**
-            
+
             Esta visualización muestra el desempeño de las distintas
             estrategias durante un periodo de estrés sistémico,
             caracterizado por alta volatilidad y caídas abruptas del mercado.
-            
+
             El análisis permite evaluar:
             - La **profundidad de la caída** inicial (drawdown).
             - La **velocidad de recuperación** tras el shock.
             - La **resiliencia relativa** de cada estrategia ante eventos extremos.
-            
+
             Los resultados evidencian que:
             - Las estrategias optimizadas para maximizar el retorno
               (como Sharpe Máximo) tienden a experimentar caídas más
@@ -478,7 +478,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             - Las estrategias orientadas a la reducción de riesgo
               (Mínima Volatilidad) presentan una mayor capacidad de
               contención de pérdidas.
-            
+
             Este análisis refuerza la idea de que la eficiencia
             riesgo–retorno debe evaluarse no solo en condiciones normales,
             sino también bajo escenarios adversos.
@@ -518,21 +518,21 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown("""
             ### ¿Qué es un benchmark?
 
-            Un **benchmark** es un **punto de referencia** que se utiliza para evaluar si una estrategia de inversión es buena o mala.  
+            Un **benchmark** es un **punto de referencia** que se utiliza para evaluar si una estrategia de inversión es buena o mala.
             Funciona de forma similar a una *regla de medición*: permite comparar los resultados obtenidos con una alternativa estándar y ampliamente utilizada en los mercados financieros.
 
             En este trabajo, los benchmarks representan **formas simples y comunes de invertir**, frente a las cuales se comparan las estrategias optimizadas desarrolladas en la aplicación.
 
             ### ¿Qué representa el S&P 500?
 
-            El **S&P 500** es uno de los índices bursátiles más conocidos del mundo. Agrupa a aproximadamente **500 de las empresas más grandes de Estados Unidos**, como Apple, Microsoft o Google.  
+            El **S&P 500** es uno de los índices bursátiles más conocidos del mundo. Agrupa a aproximadamente **500 de las empresas más grandes de Estados Unidos**, como Apple, Microsoft o Google.
             Invertir en el S&P 500 se considera una aproximación al comportamiento general del mercado y suele utilizarse como referencia básica para evaluar el desempeño de cualquier portafolio.
 
             Si una estrategia no logra superar al S&P 500 en el largo plazo, resulta difícil justificar su complejidad frente a una inversión pasiva en el mercado.
 
             ### ¿Qué es el MSCI?
 
-            **MSCI** (Morgan Stanley Capital International) es una empresa internacional que elabora **índices bursátiles** utilizados como referencia en todo el mundo.  
+            **MSCI** (Morgan Stanley Capital International) es una empresa internacional que elabora **índices bursátiles** utilizados como referencia en todo el mundo.
             Un índice MSCI representa el comportamiento de un conjunto amplio de empresas de una región o del mercado global.
 
             Por ejemplo:
@@ -543,7 +543,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
 
             ### ¿Qué es el NASDAQ?
 
-            El **NASDAQ** es una bolsa de valores estadounidense caracterizada por una **alta concentración de empresas tecnológicas y de innovación**, como Apple, Microsoft, Amazon o Google.  
+            El **NASDAQ** es una bolsa de valores estadounidense caracterizada por una **alta concentración de empresas tecnológicas y de innovación**, como Apple, Microsoft, Amazon o Google.
             El índice NASDAQ suele mostrar mayores crecimientos en periodos de expansión económica, pero también presenta **mayor volatilidad** en momentos de crisis.
 
             Por esta razón, el NASDAQ se utiliza como benchmark para comparar estrategias con un perfil más dinámico y orientado al crecimiento, especialmente en sectores tecnológicos.
@@ -567,7 +567,6 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             La comparación con estos benchmarks permite responder una pregunta clave:
             **¿La optimización realmente mejora los resultados frente a alternativas simples y ampliamente utilizadas?**
             """)
-
 
             # =====================================================================
             # 8.6) RENDIMIENTO ACUMULADO: ESTRATEGIAS VS BENCHMARKS
@@ -647,21 +646,21 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                     "Mínima Volatilidad": cum_minvol,
                     "Pesos Iguales": cum_equal
                 })
-            
+
             )
 
             st.markdown(
             """
             **Interpretación:**
-            
+
             El rendimiento acumulado refleja cómo habría evolucionado una inversión inicial
             en cada activo si se hubiera mantenido durante todo el periodo de análisis.
-            
+
             - Curvas más empinadas indican mayor crecimiento del capital.
             - Activos con mayor volatilidad suelen mostrar trayectorias más irregulares.
             - Diferencias significativas entre curvas evidencian distintos perfiles
               de riesgo y rentabilidad.
-            
+
             Este gráfico facilita la comparación directa del desempeño histórico
             entre los activos analizados.
             """
@@ -676,19 +675,19 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
             """
             **Interpretación:**
-            
+
             Este gráfico muestra los retornos porcentuales diarios de cada activo,
             evidenciando la volatilidad de corto plazo.
-            
+
             - Picos positivos o negativos representan movimientos abruptos del mercado.
             - Mayor dispersión implica mayor riesgo.
             - Periodos de alta concentración de picos suelen coincidir con crisis financieras
               o eventos macroeconómicos relevantes.
-            
+
             Este análisis es clave para evaluar el riesgo diario asumido por el inversor.
             """
             )
-            
+
             # =====================================================================
             # GRÁFICO DE RETORNOS DIARIOS POR ACTIVO
             # =====================================================================
@@ -702,14 +701,14 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
                 """
                 **Interpretación:**
-                
+
                 Este gráfico muestra el comportamiento diario del retorno del activo,
                 permitiendo identificar:
-                
+
                 - Frecuencia e intensidad de pérdidas y ganancias.
                 - Presencia de volatilidad asimétrica (más caídas que subidas).
                 - Episodios de estrés específicos para el activo.
-                
+
                 Resulta útil para evaluar el riesgo individual antes de integrarlo
                 dentro de un portafolio diversificado.
                 """
@@ -786,19 +785,19 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
             st.markdown(
                 """
                 **Interpretación analítica de la frontera eficiente:**
-                
+
                 La frontera eficiente representa el conjunto de portafolios
                 óptimos que maximizan el retorno esperado para cada nivel
                 de riesgo asumido, de acuerdo con la teoría media–varianza
                 de Markowitz.
-                
+
                 - Cada punto de la curva corresponde a una combinación
                   distinta de activos que no puede ser mejorada simultáneamente
                   en términos de mayor retorno y menor riesgo.
                 - Los portafolios situados por debajo de la frontera son
                   ineficientes, ya que existe al menos una alternativa
                   con mejor desempeño riesgo–retorno.
-                
+
                 La ubicación de las estrategias analizadas sobre la frontera
                 permite identificar su perfil:
                 - El portafolio de **Sharpe Máximo** se sitúa en una zona de
@@ -808,7 +807,7 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                   extremo de menor riesgo, sacrificando retorno esperado.
                 - La asignación de **Pesos Iguales** actúa como referencia
                   neutral, sin optimización explícita.
-                
+
                 Esta visualización facilita la comprensión del trade-off
                 riesgo–retorno y constituye una herramienta central para
                 la toma de decisiones de inversión.
@@ -977,11 +976,10 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 # 🔹 NUEVO — NO BORRES NADA DE ARRIBA
                 "asset_summary": asset_summary,
                 "strategy_summary": strategy_summary
-            }            
+            }
 
         except Exception as e:
             st.error(f"Error: {e}")
-
 # ======================================================
 # MOSTRAR RESULTADOS (FUERA DEL BOTÓN)
 # ======================================================
@@ -1010,6 +1008,10 @@ if st.session_state.analysis_done:
     st.dataframe(df_retornos)
 
 
+# ======================================================
+# ASISTENTE INTELIGENTE
+# ======================================================
+
 st.divider()
 st.subheader("🤖 Asistente inteligente del portafolio")
 
@@ -1019,94 +1021,110 @@ else:
     import os
     from openai import OpenAI
 
+    # 1️⃣ Validar API Key
     if not os.getenv("OPENAI_API_KEY"):
         st.warning("El asistente requiere una API Key válida de OpenAI.")
     else:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+        # 2️⃣ Inicializar estados (CRÍTICO)
         if "chat_messages" not in st.session_state:
             st.session_state.chat_messages = []
 
+        if "llamando_openai" not in st.session_state:
+            st.session_state.llamando_openai = False
+
+        # 3️⃣ Mostrar historial
         for msg in st.session_state.chat_messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
+        # 4️⃣ Input del usuario
         user_question = st.chat_input(
             "Pregunta sobre los tickers, riesgos o el portafolio recomendado"
         )
 
-        if user_question:
+        # 5️⃣ Llamada protegida a OpenAI
+        if user_question and not st.session_state.llamando_openai:
+            st.session_state.llamando_openai = True
+
             st.session_state.chat_messages.append(
                 {"role": "user", "content": user_question}
             )
 
             results = st.session_state.analysis_results
-
-            # Obtener pesos óptimos del portafolio recomendado
             best_strategy = results["best"]
             weights_dict = results["weights"][best_strategy]
 
-            weights_text = "\n".join([
+            weights_text = "\n".join(
                 f"- {k}: {v:.2%}"
                 for k, v in weights_dict.items()
-            ])
+            )
 
-            asset_text = "\n".join([
+            asset_text = "\n".join(
                 f"- {k}: retorno anual={v['retorno_anual']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}"
                 for k, v in results["asset_summary"].items()
-            ])
+            )
 
-            strategy_text = "\n".join([
+            strategy_text = "\n".join(
                 f"- {k}: retorno={v['retorno']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}, "
                 f"Sharpe={v['sharpe']:.2f}, "
                 f"drawdown={v['drawdown']:.2%}"
                 for k, v in results["strategy_summary"].items()
-            ])
+            )
 
             system_prompt = f"""
-            Eres un analista financiero profesional.
+Eres un analista financiero profesional.
 
-            Activos analizados:
-            {', '.join(results['tickers'])}
+Activos analizados:
+{', '.join(results['tickers'])}
 
-            Resumen cuantitativo de activos:
-            {asset_text}
+Resumen cuantitativo de activos:
+{asset_text}
 
-            Comparación de estrategias:
-            {strategy_text}
+Comparación de estrategias:
+{strategy_text}
 
-            Portafolio recomendado:
-            {results['best']}
+Portafolio recomendado:
+{results['best']}
 
-            Pesos óptimos del portafolio recomendado:
-            {weights_text}
+Pesos óptimos del portafolio recomendado:
+{weights_text}
 
-            Reglas estrictas:
-            - Usa únicamente esta información.
-            - Interpreta riesgo, retorno y trade-offs.
-            - No inventes datos.
-            - Explica en lenguaje claro para usuarios no técnicos.
-            """
+Reglas estrictas:
+- Usa únicamente esta información.
+- No inventes datos.
+- Lenguaje claro.
+"""
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    *st.session_state.chat_messages
-                ],
-                temperature=0.3
-            )
+            with st.spinner("Analizando tu pregunta..."):
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            *st.session_state.chat_messages
+                        ],
+                        temperature=0.3
+                    )
 
-            answer = response.choices[0].message.content
+                    answer = response.choices[0].message.content
 
-            st.session_state.chat_messages.append(
-                {"role": "assistant", "content": answer}
-            )
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": answer}
+                    )
 
-            with st.chat_message("assistant"):
-                st.markdown(answer)
+                except Exception:
+                    st.error(
+                        "⚠️ El asistente está ocupado o alcanzó el límite. "
+                        "Intenta nuevamente en unos segundos."
+                    )
+
+                finally:
+                    st.session_state.llamando_openai = False
+
 
 
 
