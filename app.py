@@ -1008,46 +1008,105 @@ if st.session_state.analysis_done:
     st.subheader("Ratio / retorno esperado por estrategia")
     st.dataframe(df_retornos)
 
-import os
-from openai import OpenAI
-import time
+st.divider()
+st.subheader("Asistente inteligente del portafolio")
 
-# ======================================================
-# 🤖 ASISTENTE INTELIGENTE DEL PORTAFOLIO (ESTABLE)
-# ======================================================
+if not st.session_state.analysis_done:
+    st.info("Ejecuta primero la optimización para habilitar el asis-tente.")
+else:
+    import os
+    from openai import OpenAI
 
-if "chat_messages" not in st.session_state:
-    st.session_state.chat_messages = []
+    if not os.getenv("OPENAI_API_KEY"):
+        st.warning("El asistente requiere una API Key válida de Ope-nAI.")
+    else:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-from openai import OpenAI
-import os
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = []
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-user_question = st.chat_input("Escribe tu pregunta")
+        user_question = st.chat_input(
+            "Pregunta sobre los tickers, riesgos o el portafolio reco-mendado"
+        )
 
-if user_question:
-    st.session_state.chat_messages.append(
-        {"role": "user", "content": user_question}
-    )
+        if user_question:
+            st.session_state.chat_messages.append(
+                {"role": "user", "content": user_question}
+            )
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            *st.session_state.chat_messages
-        ],
-        temperature=0.3
-    )
+            results = st.session_state.analysis_results
 
-    answer = response.choices[0].message.content
+            # Obtener pesos óptimos del portafolio recomendado
+            best_strategy = results["best"]
+            weights_dict = results["weights"][best_strategy]
 
-    st.session_state.chat_messages.append(
-        {"role": "assistant", "content": answer}
-    )
+            weights_text = "\n".join([
+                f"- {k}: {v:.2%}"
+                for k, v in weights_dict.items()
+            ])
 
-    with st.chat_message("assistant"):
-        st.markdown(answer)
+            asset_text = "\n".join([
+                f"- {k}: retorno anual={v['retorno_anual']:.2%}, "
+                f"volatilidad={v['volatilidad']:.2%}"
+                for k, v in results["asset_summary"].items()
+            ])
+
+            strategy_text = "\n".join([
+                f"- {k}: retorno={v['retorno']:.2%}, "
+                f"volatilidad={v['volatilidad']:.2%}, "
+                f"Sharpe={v['sharpe']:.2f}, "
+                f"drawdown={v['drawdown']:.2%}"
+                for k, v in results["strategy_summary"].items()
+            ])
+
+            system_prompt = f"""
+            Eres un analista financiero profesional.
+
+            Activos analizados:
+            {', '.join(results['tickers'])}
+
+            Resumen cuantitativo de activos:
+            {asset_text}
+
+            Comparación de estrategias:
+            {strategy_text}
+
+            Portafolio recomendado:
+            {results['best']}
+
+            Pesos óptimos del portafolio recomendado:
+            {weights_text}
+
+            Reglas estrictas:
+            - Usa únicamente esta información.
+            - Interpreta riesgo, retorno y trade-offs.
+            - No inventes datos.
+            - Explica en lenguaje claro para usuarios no técnicos.
+            """
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    *st.session_state.chat_messages
+                ],
+                temperature=0.3
+            )
+
+            answer = response.choices[0].message.content
+
+            st.session_state.chat_messages.append(
+                {"role": "assistant", "content": answer}
+            )
+
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+
+
 
 
 
