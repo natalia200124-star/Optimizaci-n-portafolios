@@ -1016,13 +1016,17 @@ import time
 # 🤖 ASISTENTE INTELIGENTE DEL PORTAFOLIO (ESTABLE)
 # ======================================================
 
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = []
+
 from openai import OpenAI
 import os
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-if user_question:
+user_question = st.chat_input("Escribe tu pregunta")
 
+if user_question:
     st.session_state.chat_messages.append(
         {"role": "user", "content": user_question}
     )
@@ -1044,6 +1048,8 @@ if user_question:
 
     with st.chat_message("assistant"):
         st.markdown(answer)
+
+
 
 
 
