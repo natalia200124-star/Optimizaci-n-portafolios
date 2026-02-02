@@ -5,6 +5,9 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from datetime import datetime
+import os
+import time
+from openai import OpenAI
 
 # =========================
 # SESSION STATE - INICIALIZACIÓN
@@ -1130,6 +1133,7 @@ Reglas estrictas:
                         "⚠️ El asistente está temporalmente ocupado. "
                         "Intenta nuevamente en unos segundos."
                     )
+
 
 
 
