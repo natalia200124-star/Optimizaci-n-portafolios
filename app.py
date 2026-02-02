@@ -1008,103 +1008,126 @@ if st.session_state.analysis_done:
     st.subheader("Ratio / retorno esperado por estrategia")
     st.dataframe(df_retornos)
 
+# ======================================================
+# 🤖 ASISTENTE INTELIGENTE DEL PORTAFOLIO (ESTABLE)
+# ======================================================
+
 st.divider()
-st.subheader("Asistente inteligente del portafolio")
+st.subheader("🤖 Asistente inteligente del portafolio")
+
+import os
+import time
+from openai import OpenAI
 
 if not st.session_state.analysis_done:
-    st.info("Ejecuta primero la optimización para habilitar el asis-tente.")
+    st.info("Ejecuta primero la optimización para habilitar el asistente.")
 else:
-    import os
-    from openai import OpenAI
-
     if not os.getenv("OPENAI_API_KEY"):
-        st.warning("El asistente requiere una API Key válida de Ope-nAI.")
+        st.warning("El asistente requiere una API Key válida de OpenAI.")
     else:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI()
 
+        # Inicialización segura
         if "chat_messages" not in st.session_state:
             st.session_state.chat_messages = []
 
+        if "last_openai_call" not in st.session_state:
+            st.session_state.last_openai_call = 0.0
+
+        # Mostrar historial
         for msg in st.session_state.chat_messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
         user_question = st.chat_input(
-            "Pregunta sobre los tickers, riesgos o el portafolio reco-mendado"
+            "Pregunta sobre riesgos, retornos o el portafolio recomendado"
         )
 
-        if user_question:
+        COOLDOWN = 8  # segundos
+        now = time.time()
+
+        if user_question and (now - st.session_state.last_openai_call) > COOLDOWN:
+            st.session_state.last_openai_call = now
+
             st.session_state.chat_messages.append(
                 {"role": "user", "content": user_question}
             )
 
             results = st.session_state.analysis_results
-
-            # Obtener pesos óptimos del portafolio recomendado
             best_strategy = results["best"]
             weights_dict = results["weights"][best_strategy]
 
-            weights_text = "\n".join([
-                f"- {k}: {v:.2%}"
-                for k, v in weights_dict.items()
-            ])
+            weights_text = "\n".join(
+                f"- {k}: {v:.2%}" for k, v in weights_dict.items()
+            )
 
-            asset_text = "\n".join([
+            asset_text = "\n".join(
                 f"- {k}: retorno anual={v['retorno_anual']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}"
                 for k, v in results["asset_summary"].items()
-            ])
+            )
 
-            strategy_text = "\n".join([
+            strategy_text = "\n".join(
                 f"- {k}: retorno={v['retorno']:.2%}, "
                 f"volatilidad={v['volatilidad']:.2%}, "
                 f"Sharpe={v['sharpe']:.2f}, "
                 f"drawdown={v['drawdown']:.2%}"
                 for k, v in results["strategy_summary"].items()
-            ])
+            )
 
             system_prompt = f"""
-            Eres un analista financiero profesional.
+Eres un analista financiero profesional.
 
-            Activos analizados:
-            {', '.join(results['tickers'])}
+Activos analizados:
+{', '.join(results['tickers'])}
 
-            Resumen cuantitativo de activos:
-            {asset_text}
+Resumen cuantitativo de activos:
+{asset_text}
 
-            Comparación de estrategias:
-            {strategy_text}
+Comparación de estrategias:
+{strategy_text}
 
-            Portafolio recomendado:
-            {results['best']}
+Portafolio recomendado:
+{best_strategy}
 
-            Pesos óptimos del portafolio recomendado:
-            {weights_text}
+Pesos óptimos:
+{weights_text}
 
-            Reglas estrictas:
-            - Usa únicamente esta información.
-            - Interpreta riesgo, retorno y trade-offs.
-            - No inventes datos.
-            - Explica en lenguaje claro para usuarios no técnicos.
-            """
+Reglas:
+- Usa solo esta información
+- No inventes datos
+- Explica en lenguaje claro
+"""
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    *st.session_state.chat_messages
-                ],
-                temperature=0.3
+            # Limitar historial (CLAVE para evitar RateLimit)
+            conversation = (
+                [{"role": "system", "content": system_prompt}]
+                + st.session_state.chat_messages[-4:]
             )
 
-            answer = response.choices[0].message.content
+            with st.spinner("Analizando tu pregunta..."):
+                try:
+                    response = client.responses.create(
+                        model="gpt-4.1-mini",
+                        input=conversation
+                    )
 
-            st.session_state.chat_messages.append(
-                {"role": "assistant", "content": answer}
-            )
+                    answer = response.output_text
 
-            with st.chat_message("assistant"):
-                st.markdown(answer)
+                    st.session_state.chat_messages.append(
+                        {"role": "assistant", "content": answer}
+                    )
+
+                    with st.chat_message("assistant"):
+                        st.markdown(answer)
+
+                except Exception:
+                    st.error(
+                        "⚠️ El asistente está temporalmente ocupado. "
+                        "Espera unos segundos e intenta de nuevo."
+                    )
+
+
 
 
 
