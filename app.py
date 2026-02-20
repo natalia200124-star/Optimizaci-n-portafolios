@@ -51,8 +51,9 @@ years = st.slider(
 )
 
 if st.button("Ejecutar optimización"):
-    st.session_state.run_analysis = True
-    st.session_state.analysis_done = False
+    # Solo ejecutar si no se ha hecho antes
+    if not st.session_state.analysis_done:
+        st.session_state.run_analysis = True
 
 if st.session_state.run_analysis and not st.session_state.analysis_done:
 
@@ -936,7 +937,9 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                 """
             )
 
+            # ── MARCAR QUE EL ANÁLISIS YA SE HIZO ──
             st.session_state.analysis_done = True
+            st.session_state.run_analysis = False
 
             st.success("Análisis del portafolio ejecutado correctamente")
 
@@ -1126,6 +1129,7 @@ Reglas:
                         "⚠️ El asistente está temporalmente ocupado. "
                         "Espera unos segundos e intenta de nuevo."
                     )
+
 
 
 
