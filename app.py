@@ -1090,6 +1090,11 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                     """
                 )
 
+            st.session_state.analysis_done = True
+            st.session_state.run_analysis = False  # ← LÍNEA NUEVA
+
+            st.success("Análisis del portafolio ejecutado correctamente")
+
             # ======================================================
             # GUARDAR RESULTADOS PARA EL CHAT
             # ======================================================
@@ -1123,19 +1128,13 @@ if st.session_state.run_analysis and not st.session_state.analysis_done:
                     "Mínima Volatilidad": vol_minvol,
                     "Pesos Iguales": vol_equal
                 },
+                # 🔹 NUEVO — NO BORRES NADA DE ARRIBA
                 "asset_summary": asset_summary,
                 "strategy_summary": strategy_summary
             }
 
-            # ── Marcar análisis completado y detener el bucle de re-ejecución ──
-            st.session_state.analysis_done = True
-            st.session_state.run_analysis = False
-
-            st.success("Análisis del portafolio ejecutado correctamente")
-
         except Exception as e:
             st.error(f"Error: {e}")
-
 # ======================================================
 # MOSTRAR RESULTADOS (FUERA DEL BOTÓN)
 # ======================================================
@@ -1266,7 +1265,13 @@ INSTRUCCIONES ESTRICTAS:
 - Si preguntan por cifras, usa números concretos.
 - No inventes datos.
 - Termina siempre la respuesta.
-"""
+""".format(
+    tickers=", ".join(results["tickers"]),
+    asset_text=asset_text,
+    strategy_text=strategy_text,
+    best_strategy=best_strategy,
+    weights_text=weights_text
+)
         # =========================
         # LLAMADA A GEMINI
         # =========================
@@ -1308,6 +1313,7 @@ INSTRUCCIONES ESTRICTAS:
 
         with st.chat_message("assistant"):
             st.markdown(answer)
+
 
 
 
