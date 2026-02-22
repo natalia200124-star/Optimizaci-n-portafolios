@@ -317,225 +317,127 @@ if "run_analysis" not in st.session_state:
 
 st.title("Optimización de Portafolios – Modelo de Markowitz")
 
-st.markdown("""
-### ¿Qué es un ticker?
-
-Un **ticker** es el código con el que se identifica una acción en la bolsa de valores.
-Cada empresa cotizada tiene un ticker único que permite acceder a su información de mercado.
-
-**Ejemplos comunes:**
-- **AAPL** → Apple Inc.
-- **MSFT** → Microsoft Corporation
-- **GOOGL** → Alphabet (Google)
-
-Estos códigos se utilizan para descargar automáticamente los precios históricos
-y realizar el análisis financiero del portafolio.
-""")
+with st.expander("❓ ¿Qué es un ticker?"):
+    st.markdown("""
+    Un **ticker** es el código con el que se identifica una acción en la bolsa de valores.
+    **Ejemplos:** AAPL (Apple), MSFT (Microsoft), GOOGL (Google).
+    """)
 
 tickers_input = st.text_input(
     "Ingrese los tickers separados por comas (ejemplo: AAPL, MSFT, GOOGL)",
     help="Use los códigos bursátiles oficiales. Separe cada ticker con una coma."
 )
 
-years = st.slider(
-    "Seleccione el horizonte temporal (años)",
-    min_value=3,
-    max_value=10,
-    value=6
-)
+years = st.slider("Seleccione el horizonte temporal (años)", 3, 10, 6)
 
 if st.button("Ejecutar optimización"):
     st.session_state.run_analysis = True
     st.session_state.analysis_done = False
 
 if st.session_state.run_analysis and not st.session_state.analysis_done:
-        tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
-
-        if len(tickers) < 2:
-            st.error("Ingrese al menos 2 tickers.")
-            st.stop()
-
+    tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()]
+    if len(tickers) < 2:
+        st.error("Ingrese al menos 2 tickers.")
+    else:
         try:
             data = get_crypto_data(tickers, years)
             if data is None or data.empty:
-                st.error("No hay datos suficientes para el periodo seleccionado.")
-                st.stop()
+                st.error("No hay datos suficientes.")
+            else:
+                returns = data.pct_change().dropna()
+                opt_results = run_portfolio_optimizations(returns, tickers)
+                
+                weights_sharpe, ret_sharpe, vol_sharpe, sharpe_sharpe = opt_results["sharpe"]
+                weights_minvol, ret_minvol, vol_minvol, sharpe_minvol = opt_results["minvol"]
+                weights_equal, ret_equal, vol_equal, sharpe_equal = opt_results["equal"]
+                mean_returns_annual = opt_results["mean_returns_annual"]
+                cov_annual = opt_results["cov_annual"]
 
-            st.subheader("Precios ajustados depurados (primeras filas)")
-            st.dataframe(data.head())
+                daily_sharpe, daily_minvol, daily_equal = returns.dot(weights_sharpe), returns.dot(weights_minvol), returns.dot(weights_equal)
+                cum_sharpe, cum_minvol, cum_equal = (1 + daily_sharpe).cumprod(), (1 + daily_minvol).cumprod(), (1 + daily_equal).cumprod()
+                dd_sharpe, dd_minvol, dd_equal = max_drawdown(cum_sharpe), max_drawdown(cum_minvol), max_drawdown(cum_equal)
 
-            returns = data.pct_change().dropna()
-            
-            # Optimización del portafolio
-            opt_results = run_portfolio_optimizations(returns, tickers)
-            
-            weights_sharpe, ret_sharpe, vol_sharpe, sharpe_sharpe = opt_results["sharpe"]
-            weights_minvol, ret_minvol, vol_minvol, sharpe_minvol = opt_results["minvol"]
-            weights_equal, ret_equal, vol_equal, sharpe_equal = opt_results["equal"]
-            mean_returns_annual = opt_results["mean_returns_annual"]
-            cov_annual = opt_results["cov_annual"]
+                benchmark_data, benchmarks = get_benchmark_data(years)
+                benchmark_returns = benchmark_data.pct_change().dropna()
+                benchmark_cum = (1 + benchmark_returns).cumprod()
 
-            # Retornos y Drawdowns
-            daily_sharpe = returns.dot(weights_sharpe)
-            daily_minvol = returns.dot(weights_minvol)
-            daily_equal = returns.dot(weights_equal)
+                efficient_vols, efficient_rets = get_efficient_frontier(mean_returns_annual, cov_annual, tickers)
 
-            cum_sharpe = (1 + daily_sharpe).cumprod()
-            cum_minvol = (1 + daily_minvol).cumprod()
-            cum_equal = (1 + daily_equal).cumprod()
-
-            dd_sharpe = max_drawdown(cum_sharpe)
-            dd_minvol = max_drawdown(cum_minvol)
-            dd_equal = max_drawdown(cum_equal)
-
-            # Benchmarks
-            benchmark_data, benchmarks = get_benchmark_data(years)
-            benchmark_returns = benchmark_data.pct_change().dropna()
-            benchmark_cum = (1 + benchmark_returns).cumprod()
-
-            # Frontera Eficiente
-            efficient_vols, efficient_rets = get_efficient_frontier(mean_returns_annual, cov_annual, tickers)
-
-
-            # =====================================================================
-            # CÁLCULOS ADICIONALES PARA UI
-            # =====================================================================
-            rolling_vol = pd.DataFrame({
-                "Sharpe Máximo": daily_sharpe.rolling(252).std() * np.sqrt(252),
-                "Mínima Volatilidad": daily_minvol.rolling(252).std() * np.sqrt(252),
-                "Pesos Iguales": daily_equal.rolling(252).std() * np.sqrt(252)
-            })
-
-            calmar_sharpe = ret_sharpe / abs(dd_sharpe)
-            calmar_minvol = ret_minvol / abs(dd_minvol)
-            calmar_equal = ret_equal / abs(dd_equal)
-            df_calmar = pd.DataFrame({
-                "Estrategia": ["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"],
-                "Calmar": [calmar_sharpe, calmar_minvol, calmar_equal]
-            })
-
-            downside = returns.copy()
-            downside[downside > 0] = 0
-            downside_std = downside.std() * np.sqrt(252)
-            sortino_sharpe = ret_sharpe / downside_std.dot(weights_sharpe)
-            sortino_minvol = ret_minvol / downside_std.dot(weights_minvol)
-            sortino_equal = ret_equal / downside_std.dot(weights_equal)
-            df_sortino = pd.DataFrame({
-                "Estrategia": ["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"],
-                "Sortino": [sortino_sharpe, sortino_minvol, sortino_equal]
-            })
-
-            crisis = (cum_sharpe.index.year == 2020)
-            crisis_data = pd.DataFrame({
-                "Sharpe Máximo": cum_sharpe[crisis],
-                "Mínima Volatilidad": cum_minvol[crisis],
-                "Pesos Iguales": cum_equal[crisis]
-            })
-
-            def annualized_return(series): return (series.iloc[-1]) ** (252 / len(series)) - 1
-            def annualized_vol(series): return series.std() * np.sqrt(252)
-            
-            benchmark_summary = []
-            for name, ticker in benchmarks.items():
-                ret = annualized_return(benchmark_cum[ticker])
-                vol = annualized_vol(benchmark_returns[ticker])
-                dd = max_drawdown(benchmark_cum[ticker])
-                benchmark_summary.append({
-                    "Benchmark": name, "Retorno Anual": ret, "Volatilidad": vol,
-                    "Retorno Acumulado": benchmark_cum[ticker].iloc[-1] - 1, "Máx Drawdown": dd
+                rolling_vol = pd.DataFrame({
+                    "Sharpe Máximo": daily_sharpe.rolling(252).std() * np.sqrt(252),
+                    "Mínima Volatilidad": daily_minvol.rolling(252).std() * np.sqrt(252),
+                    "Pesos Iguales": daily_equal.rolling(252).std() * np.sqrt(252)
                 })
-            df_benchmarks = pd.DataFrame(benchmark_summary)
 
-            comparison_cum = pd.DataFrame({
-                "Sharpe Máximo": cum_sharpe, "Mínima Volatilidad": cum_minvol, "Pesos Iguales": cum_equal,
-                "S&P 500 (SPY)": benchmark_cum["SPY"], "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"], "MSCI World (URTH)": benchmark_cum["URTH"]
-            })
-
-            # Mejor portafolio (ponderado)
-            df_strategies = pd.DataFrame({"Sharpe Máximo": daily_sharpe, "Mínima Volatilidad": daily_minvol, "Pesos Iguales": daily_equal})
-            years_index = df_strategies.index.year
-            unique_years = np.sort(years_index.unique())
-            year_weights = {year: (i + 1) / len(unique_years) for i, year in enumerate(unique_years)}
-            weights_series = years_index.map(year_weights)
-            weighted_performance = ((1 + df_strategies).cumprod().mul(weights_series, axis=0).iloc[-1])
-            best = weighted_performance.idxmax()
-
-            if best == "Sharpe Máximo": final_weights = weights_sharpe
-            elif best == "Mínima Volatilidad": final_weights = weights_minvol
-            else: final_weights = weights_equal
-            
-            df_weights = pd.DataFrame({"Ticker": tickers, "Peso": final_weights.round(2), "Peso (%)": (final_weights * 100).round(2)})
-
-            asset_summary = {t: {"retorno_anual": mean_returns_annual[t], "volatilidad": np.sqrt(cov_annual.loc[t, t])} for t in tickers}
-            strategy_summary = {
-                "Sharpe Máximo": {"retorno": ret_sharpe, "volatilidad": vol_sharpe, "sharpe": sharpe_sharpe, "drawdown": dd_sharpe},
-                "Mínima Volatilidad": {"retorno": ret_minvol, "volatilidad": vol_minvol, "sharpe": sharpe_minvol, "drawdown": dd_minvol},
-                "Pesos Iguales": {"retorno": ret_equal, "volatilidad": vol_equal, "sharpe": sharpe_equal, "drawdown": dd_equal}
-            }
-
-            st.session_state.analysis_results = {
-                "data": data, "tickers": tickers, "returns": returns,
-                "comparison": pd.DataFrame({
+                df_calmar = pd.DataFrame({
                     "Estrategia": ["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"],
-                    "Retorno Anual": [ret_sharpe, ret_minvol, ret_equal], "Volatilidad": [vol_sharpe, vol_minvol, vol_equal],
-                    "Sharpe": [sharpe_sharpe, sharpe_minvol, sharpe_equal], "Máx Drawdown": [dd_sharpe, dd_minvol, dd_equal]
-                }),
-                "rolling_vol": rolling_vol, "df_calmar": df_calmar, "df_sortino": df_sortino,
-                "crisis_data": crisis_data, "df_benchmarks": df_benchmarks, "comparison_cum": comparison_cum,
-                "weighted_performance": weighted_performance, "best": best, "weights_recommended": df_weights,
-                "weights": {"Sharpe Máximo": dict(zip(tickers, weights_sharpe)), "Mínima Volatilidad": dict(zip(tickers, weights_minvol)), "Pesos Iguales": dict(zip(tickers, weights_equal))},
-                "retornos": {"Sharpe Máximo": ret_sharpe, "Mínima Volatilidad": ret_minvol, "Pesos Iguales": ret_equal},
-                "asset_summary": asset_summary, "strategy_summary": strategy_summary,
-                "efficient_data": (efficient_vols, efficient_rets)
-            }
-            st.session_state.analysis_done = True
-            st.session_state.run_analysis = False
-            st.success("Análisis completado correctamente.")
+                    "Calmar": [ret_sharpe / abs(dd_sharpe), ret_minvol / abs(dd_minvol), ret_equal / abs(dd_equal)]
+                })
 
+                downside = returns.copy()
+                downside[downside > 0] = 0
+                downside_std = downside.std() * np.sqrt(252)
+                df_sortino = pd.DataFrame({
+                    "Estrategia": ["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"],
+                    "Sortino": [ret_sharpe / downside_std.dot(weights_sharpe), ret_minvol / downside_std.dot(weights_minvol), ret_equal / downside_std.dot(weights_equal)]
+                })
+
+                crisis = (cum_sharpe.index.year == 2020)
+                crisis_data = pd.DataFrame({"Sharpe Máximo": cum_sharpe[crisis], "Mínima Volatilidad": cum_minvol[crisis], "Pesos Iguales": cum_equal[crisis]})
+
+                def ann_ret(s): return (s.iloc[-1]) ** (252 / len(s)) - 1
+                def ann_vol(s): return s.std() * np.sqrt(252)
+                
+                df_benchmarks = pd.DataFrame([{
+                    "Benchmark": n, "Retorno Anual": ann_ret(benchmark_cum[t]), "Volatilidad": ann_vol(benchmark_returns[t]),
+                    "Retorno Acumulado": benchmark_cum[t].iloc[-1] - 1, "Máx Drawdown": max_drawdown(benchmark_cum[t])
+                } for n, t in benchmarks.items()])
+
+                comparison_cum = pd.DataFrame({
+                    "Sharpe Máximo": cum_sharpe, "Mínima Volatilidad": cum_minvol, "Pesos Iguales": cum_equal,
+                    "S&P 500 (SPY)": benchmark_cum["SPY"], "Nasdaq 100 (QQQ)": benchmark_cum["QQQ"], "MSCI World (URTH)": benchmark_cum["URTH"]
+                })
+
+                df_strategies = pd.DataFrame({"Sharpe Máximo": daily_sharpe, "Mínima Volatilidad": daily_minvol, "Pesos Iguales": daily_equal})
+                year_w = {y: (i + 1) for i, y in enumerate(np.sort(df_strategies.index.year.unique()))}
+                w_series = df_strategies.index.year.map(year_w) / sum(year_w.values())
+                weighted_perf = ((1 + df_strategies).cumprod().mul(w_series, axis=0).iloc[-1])
+                best = weighted_perf.idxmax()
+
+                final_w = weights_sharpe if best == "Sharpe Máximo" else (weights_minvol if best == "Mínima Volatilidad" else weights_equal)
+                df_weights = pd.DataFrame({"Ticker": tickers, "Peso": final_w.round(2), "Peso (%)": (final_w * 100).round(2)})
+
+                asset_summary = {t: {"retorno_anual": mean_returns_annual[t], "volatilidad": np.sqrt(cov_annual.loc[t, t])} for t in tickers}
+                strategy_summary = {
+                    "Sharpe Máximo": {"retorno": ret_sharpe, "volatilidad": vol_sharpe, "sharpe": sharpe_sharpe, "drawdown": dd_sharpe},
+                    "Mínima Volatilidad": {"retorno": ret_minvol, "volatilidad": vol_minvol, "sharpe": sharpe_minvol, "drawdown": dd_minvol},
+                    "Pesos Iguales": {"retorno": ret_equal, "volatilidad": vol_equal, "sharpe": sharpe_equal, "drawdown": dd_equal}
+                }
+
+                st.session_state.analysis_results = {
+                    "data": data, "tickers": tickers, "returns": returns,
+                    "comparison": pd.DataFrame({
+                        "Estrategia": ["Sharpe Máximo", "Mínima Volatilidad", "Pesos Iguales"],
+                        "Retorno Anual": [ret_sharpe, ret_minvol, ret_equal], "Volatilidad": [vol_sharpe, vol_minvol, vol_equal],
+                        "Sharpe": [sharpe_sharpe, sharpe_minvol, sharpe_equal], "Máx Drawdown": [dd_sharpe, dd_minvol, dd_equal]
+                    }),
+                    "rolling_vol": rolling_vol, "df_calmar": df_calmar, "df_sortino": df_sortino,
+                    "crisis_data": crisis_data, "df_benchmarks": df_benchmarks, "comparison_cum": comparison_cum,
+                    "weighted_performance": weighted_perf, "best": best, "weights_recommended": df_weights,
+                    "weights": {"Sharpe Máximo": dict(zip(tickers, weights_sharpe)), "Mínima Volatilidad": dict(zip(tickers, weights_minvol)), "Pesos Iguales": dict(zip(tickers, weights_equal))},
+                    "retornos": {"Sharpe Máximo": ret_sharpe, "Mínima Volatilidad": ret_minvol, "Pesos Iguales": ret_equal},
+                    "asset_summary": asset_summary, "strategy_summary": strategy_summary,
+                    "efficient_data": (efficient_vols, efficient_rets)
+                }
+                st.session_state.analysis_done = True
+                st.session_state.run_analysis = False
+                st.success("Análisis completado.")
         except Exception as e:
             st.error(f"Error: {e}")
 
 if st.session_state.analysis_done:
     render_ui(st.session_state.analysis_results, years)
 
-                    Los **pesos óptimos** indican cómo distribuir el capital para obtener
-                    el mejor balance entre **riesgo y retorno**, según el modelo de Markowitz.
-
-                    - Un **peso del 40%** significa que **40 de cada 100 unidades monetarias**
-                      se asignan a ese activo.
-                    - **Pesos altos** reflejan activos que aportan mayor eficiencia al portafolio.
-                    - **Pesos bajos** indican activos que añaden más riesgo que beneficio relativo.
-
-                    Para personas sin experiencia previa,
-                    esta tabla funciona como una **guía práctica de asignación de capital**,
-                    evitando decisiones intuitivas o emocionales.
-                    """
-                )
-
-            st.session_state.analysis_done = True
-            st.session_state.run_analysis = False
-
-            st.success("Análisis del portafolio ejecutado correctamente")
-
-            # ======================================================
-            # GUARDAR RESULTADOS PARA EL CHAT
-            # ======================================================
-            st.session_state["analysis_results"] = {
-                "tickers": tickers,
-                "best": best,
-
-                # Comparación general
-                "comparison": df_compare,
-
-                # Pesos del portafolio recomendado (tabla)
-                "weights_recommended": df_weights,
-
-                # Pesos óptimos por estrategia (clave para el chat)
-                "weights": {
-                    "Sharpe Máximo": dict(zip(tickers, weights_sharpe)),
-                    "Mínima Volatilidad": dict(zip(tickers, weights_minvol)),
-                    "Pesos Iguales": dict(zip(tickers, [1 / len(tickers)] * len(tickers)))
-                },
 
                 # Retornos esperados
                 "retornos": {
@@ -737,6 +639,7 @@ INSTRUCCIONES ESTRICTAS:
 
         with st.chat_message("assistant"):
             st.markdown(answer)
+
 
 
 
