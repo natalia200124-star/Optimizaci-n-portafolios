@@ -1,9 +1,9 @@
-streamlit
-yfinance
 pandas
+yfinance
 numpy
 scipy
 matplotlib
-openai
+requests
+scikit-learn
 
 
